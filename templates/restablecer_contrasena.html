@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Contraseña - Ayuntamiento de Cutupú</title>
+    
+ <!-- CSS BASE -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/static.css') }}">
+
+<!-- CSS DE ESTA PÁGINA -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/restablecer.css') }}">
+</head>
+
+<body class="login-page">
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-content">
+            <i class="fas fa-landmark header-icon"></i>
+            <div class="header-text">
+                <h1>Ayuntamiento de Cutupú</h1>
+                <p>Crear Nueva Contraseña</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="main-content">
+        <div class="reset-card">
+            <!-- ENCABEZADO DE LA TARJETA -->
+            <div class="card-top">
+                <div class="card-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2>Nueva Contraseña</h2>
+                <p>Crea una contraseña segura para tu cuenta</p>
+            </div>
+
+            <!-- CUERPO DE LA TARJETA -->
+            <div class="card-body">
+                <!-- PROGRESO -->
+                <div class="reset-progress">
+                    <div class="reset-step completed">
+                        <div class="step-dot">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="step-name">Solicitud</div>
+                    </div>
+                    <div class="reset-step completed">
+                        <div class="step-dot">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="step-name">Validación</div>
+                    </div>
+                    <div class="reset-step active">
+                        <div class="step-dot">3</div>
+                        <div class="step-name">Nueva Clave</div>
+                    </div>
+                </div>
+
+                <!-- TEMPORIZADOR -->
+                <div class="timer">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <strong>Enlace activo por:</strong>
+                        <span class="time-remaining">24 horas</span>
+                    </div>
+                </div>
+
+                <!-- INSTRUCCIONES -->
+                <div class="instructions">
+                    <h4><i class="fas fa-lightbulb"></i> Recomendaciones de seguridad:</h4>
+                    <ul>
+                        <li>Usa al menos 8 caracteres</li>
+                        <li>Incluye mayúsculas, minúsculas y números</li>
+                        <li>Evita contraseñas comunes o personales</li>
+                        <li>No reutilices contraseñas antiguas</li>
+                    </ul>
+                </div>
+
+                <!-- MENSAJES DEL SISTEMA -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="message-box {{ category if category != 'error' else 'error' }}">
+                                <strong>
+                                    {% if category == 'info' %}
+                                        <i class="fas fa-info-circle"></i> Información:
+                                    {% elif category == 'success' %}
+                                        <i class="fas fa-check-circle"></i> Éxito:
+                                    {% else %}
+                                        <i class="fas fa-exclamation-triangle"></i> Atención:
+                                    {% endif %}
+                                </strong>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- FORMULARIO -->
+                <form method="POST" action="{{ url_for('restablecer_contrasena', token=token) }}" id="resetForm">
+                    <!-- NUEVA CONTRASEÑA -->
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-key"></i> Nueva Contraseña
+                        </label>
+                        <div class="password-container">
+                            <input type="password" 
+                                   id="password" 
+                                   name="password" 
+                                   class="form-control" 
+                                   placeholder="Ingresa tu nueva contraseña" 
+                                   required
+                                   minlength="6">
+                            <button type="button" class="toggle-password" onclick="togglePasswordVisibility('password')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- INDICADOR DE FORTALEZA -->
+                        <div class="password-strength">
+                            <div class="strength-bar" id="strengthBar"></div>
+                        </div>
+                        <div class="strength-text" id="strengthText">Escribe tu contraseña</div>
+                    </div>
+
+                    <!-- CONFIRMAR CONTRASEÑA -->
+                    <div class="form-group">
+                        <label for="confirm_password">
+                            <i class="fas fa-redo"></i> Confirmar Contraseña
+                        </label>
+                        <div class="password-container">
+                            <input type="password" 
+                                   id="confirm_password" 
+                                   name="confirm_password" 
+                                   class="form-control" 
+                                   placeholder="Repite tu nueva contraseña" 
+                                   required
+                                   minlength="6">
+                            <button type="button" class="toggle-password" onclick="togglePasswordVisibility('confirm_password')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div id="passwordMatch" class="form-text"></div>
+                    </div>
+
+                    <!-- REGLAS DE CONTRASEÑA -->
+                    <div class="password-rules">
+                        <div class="rules-title">
+                            <i class="fas fa-clipboard-check"></i> Tu contraseña debe incluir:
+                        </div>
+                        <div class="rule invalid" id="ruleLength">
+                            <i class="fas fa-times"></i>
+                            <span>Al menos 6 caracteres</span>
+                        </div>
+                        <div class="rule invalid" id="ruleUpper">
+                            <i class="fas fa-times"></i>
+                            <span>Una letra mayúscula</span>
+                        </div>
+                        <div class="rule invalid" id="ruleLower">
+                            <i class="fas fa-times"></i>
+                            <span>Una letra minúscula</span>
+                        </div>
+                        <div class="rule invalid" id="ruleNumber">
+                            <i class="fas fa-times"></i>
+                            <span>Un número</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn" id="submitBtn">
+                        <i class="fas fa-save"></i> Guardar Nueva Contraseña
+                    </button>
+                </form>
+
+                <!-- ENLACES DE NAVEGACIÓN -->
+                <div class="action-links">
+                    <a href="{{ url_for('login') }}" class="back-link">
+                        <i class="fas fa-sign-in-alt"></i> Volver al Inicio de Sesión
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p>Ayuntamiento Municipal de Cutupú © 2023</p>
+            <p class="security">
+                <i class="fas fa-shield-alt"></i> Sistema Seguro - Encriptación SSL
+            </p>
+        </div>
+    </footer>
+
+    <!-- SOLO LOS SCRIPTS NECESARIOS (opcional) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    
+    <!-- JAVASCRIPT PROPIO -->
+   
+    <script src="{{ url_for('static', filename='js/restablecer.js') }}"></script>
+</body>
+</html>

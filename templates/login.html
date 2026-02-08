@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso - Ayuntamiento de Cutupú</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/static.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="login-page">
+
+<header class="login-header">
+    <div class="container">
+        <h1><i class="fas fa-landmark"></i> Ayuntamiento de Cutupú</h1>
+        <p>Sistema de Acceso Municipal</p>
+    </div>
+</header>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="logo">
+            <span>Ayuntamiento de Cutupú</span>
+        </div>
+        <a href="{{ url_for('index') }}" class="btn-acceso">
+            <i class="fas fa-arrow-left"></i> Volver al Inicio
+        </a>
+    </div>
+</nav>
+
+<main class="login-container">
+    <div class="form-module">
+
+        <!-- TOGGLE -->
+        <div class="form-toggle">
+            <a href="{{ url_for('login') }}" class="toggle-btn {% if not register %}active{% endif %}">
+                Iniciar Sesión
+            </a>
+            <a href="{{ url_for('login', register='true') }}" class="toggle-btn {% if register %}active{% endif %}">
+                Crear Cuenta
+            </a>
+        </div>
+
+        {% if register %}
+        <!-- FORMULARIO DE REGISTRO -->
+        <div class="form-content" id="registerForm">
+            <!-- IMPORTANTE: El formulario de registro también envía a /login -->
+            <form method="POST" action="{{ url_for('login') }}">
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="form-group">
+                    <label for="reg-nombre">Nombre Completo *</label>
+                    <input type="text" id="reg-nombre" name="nombre" placeholder="Juan Pérez" required 
+                           value="{% if request.method == 'POST' %}{{ request.form.nombre }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-email">Correo Electrónico *</label>
+                    <input type="email" id="reg-email" name="email" placeholder="usuario@ejemplo.com" required
+                           value="{% if request.method == 'POST' %}{{ request.form.email }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-password">Contraseña *</label>
+                    <input type="password" id="reg-password" name="password" placeholder="Mínimo 6 caracteres" minlength="6" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-confirm">Confirmar Contraseña *</label>
+                    <input type="password" id="reg-confirm" name="confirm_password" placeholder="Repita la contraseña" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-telefono">Teléfono (Opcional)</label>
+                    <input type="text" id="reg-telefono" name="telefono" placeholder="809-123-4567"
+                           value="{% if request.method == 'POST' %}{{ request.form.telefono }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-cedula">Cédula (Opcional)</label>
+                    <input type="text" id="reg-cedula" name="cedula" placeholder="001-1234567-8"
+                           value="{% if request.method == 'POST' %}{{ request.form.cedula }}{% endif %}">
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-user-plus"></i> Crear Cuenta
+                </button>
+
+                <div class="form-links">
+                    <a href="{{ url_for('login') }}">
+                        <i class="fas fa-sign-in-alt"></i> Ya tengo cuenta
+                    </a>
+                </div>
+
+            </form>
+        </div>
+
+        {% else %}
+        <!-- FORMULARIO DE LOGIN -->
+        <div class="form-content" id="loginForm">
+            <form method="POST" action="{{ url_for('login') }}">
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            {% if category != 'success' %}
+                            <!-- Mostrar todos los mensajes excepto 'success' en login -->
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }}">
+                                {{ message }}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                {% if request.args.get('registro') == 'ok' %}
+                <div class="alert alert-success">
+                    ¡Cuenta creada exitosamente! Ahora puedes iniciar sesión.
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="login-email">Correo Electrónico</label>
+                    <input type="email" id="login-email" name="usuario" placeholder="admin@ayuntamiento.gob" required 
+                           value="{% if request.method == 'POST' %}{{ request.form.usuario }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" name="password" placeholder="admin123" required>
+                </div>
+
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                    <label class="form-check-label" for="remember">Recordarme</label>
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-sign-in-alt"></i> Ingresar
+                </button>
+
+                <div class="form-links">
+                    <a href="{{ url_for('olvido_contrasena') }}">
+                        <i class="fas fa-key"></i> ¿Olvidó su contraseña?
+                    </a>
+                </div>
+
+            </form>
+        </div>
+        {% endif %}
+
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <p>Ayuntamiento Municipal de Cutupú · Sistema Seguro</p>
+        <p class="demo-credentials" style="font-size: 12px; margin-top: 10px; color: #666;">
+            <i class="fas fa-info-circle"></i> Credenciales de prueba: admin@ayuntamiento.gob / admin123
+        </p>
+    </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validación de formulario de registro
+    const registerFormElement = document.querySelector('#registerForm form');
+    if (registerFormElement) {
+        registerFormElement.addEventListener('submit', function(e) {
+            const password = document.getElementById('reg-password');
+            const confirm = document.getElementById('reg-confirm');
+            
+            if (password && confirm && password.value !== confirm.value) {
+                e.preventDefault();
+                alert('Las contraseñas no coinciden');
+                confirm.focus();
+                return false;
+            }
+            
+            if (password && password.value.length < 6) {
+                e.preventDefault();
+                alert('La contraseña debe tener al menos 6 caracteres');
+                password.focus();
+                return false;
+            }
+        });
+    }
+});
+</script>
+
+</body>
+</html>

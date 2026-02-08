@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Contraseña - Ayuntamiento de Cutupú</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/contraseña.css') }}">
+    
+    <!-- Iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+        <div class="header-content">
+            <i class="fas fa-landmark header-icon"></i>
+            <div class="header-text">
+                <h1>Ayuntamiento de Cutupú</h1>
+                <p>Sistema de Recuperación de Contraseña</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== CONTENIDO PRINCIPAL ===== -->
+    <main class="main-content">
+        <div class="recovery-card">
+            <!-- Encabezado de la Tarjeta -->
+            <div class="card-top">
+                <div class="card-icon">
+                    <i class="fas fa-key"></i>
+                </div>
+                <h2>Recuperar Contraseña</h2>
+                <p>Ingresa tu correo para recibir un enlace de recuperación</p>
+            </div>
+
+            <!-- Cuerpo de la Tarjeta -->
+            <div class="card-body">
+                <!-- ===== MENSAJES DEL SISTEMA ===== -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="message-box {{ category if category != 'error' else 'error' }}">
+                                <strong>
+                                    {% if category == 'info' %}
+                                        <i class="fas fa-info-circle"></i> Información:
+                                    {% elif category == 'success' %}
+                                        <i class="fas fa-check-circle"></i> Éxito:
+                                    {% else %}
+                                        <i class="fas fa-exclamation-triangle"></i> Atención:
+                                    {% endif %}
+                                </strong>
+                                {{ message }}
+                                
+                                <!-- Mostrar enlace de prueba si está en el mensaje -->
+                                {% if "Enlace de prueba:" in message %}
+                                    <br><br>
+                                    <strong>Enlace para desarrollo:</strong>
+                                    {% set lines = message.split('\n') %}
+                                    {% for line in lines %}
+                                        {% if "http://" in line %}
+                                            {% set url = line.split(': ')[1] if ': ' in line else line %}
+                                            <a href="{{ url }}" class="token-link" target="_blank">
+                                                <i class="fas fa-external-link-alt"></i> {{ url }}
+                                            </a>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                
+                                <!-- Mostrar correo si está en el mensaje -->
+                                {% if "duransebastian623@gmail.com" in message %}
+                                    <br>
+                                    <small>Correo: duransebastian623@gmail.com</small>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- ===== FORMULARIO ===== -->
+                <form method="POST" action="{{ url_for('olvido_contrasena') }}" id="recoveryForm">
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i> Correo Electrónico
+                        </label>
+                        <input type="email" 
+                               id="email" 
+                               name="email" 
+                               class="form-control" 
+                               placeholder="ejemplo@cutupu.gob.sv" 
+                               required
+                               {% if get_flashed_messages(with_categories=true) %}
+                                   {% for category, message in get_flashed_messages(with_categories=true) %}
+                                       {% if "duransebastian623@gmail.com" in message %}
+                                           value="duransebastian623@gmail.com"
+                                       {% endif %}
+                                   {% endfor %}
+                               {% endif %}>
+                        <small class="form-text">
+                            Ingrese el correo asociado a su cuenta
+                        </small>
+                    </div>
+
+                    <button type="submit" class="btn" id="submitBtn">
+                        <i class="fas fa-paper-plane"></i> Enviar Enlace de Recuperación
+                    </button>
+                </form>
+
+                <!-- ===== ENLACES DE NAVEGACIÓN ===== -->
+                <div class="action-links">
+                    <a href="{{ url_for('login') }}" class="back-link">
+                        <i class="fas fa-arrow-left"></i> Volver al Inicio de Sesión
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p>Ayuntamiento Municipal de Cutupú © 2026</p>
+            <p class="security">
+                <i class="fas fa-shield-alt"></i> Sistema Seguro
+            </p>
+        </div>
+    </footer>
+
+    <!-- ===== JAVASCRIPT ===== -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-focus en el campo email
+            const emailField = document.getElementById('email');
+            if (emailField && !emailField.value) {
+                emailField.focus();
+            }
+            
+            // Manejo del envío del formulario
+            const form = document.getElementById('recoveryForm');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (form && submitBtn) {
+                form.addEventListener('submit', function(e) {
+                    // Validación básica
+                    const email = emailField.value.trim();
+                    if (!email) {
+                        e.preventDefault();
+                        emailField.focus();
+                        emailField.style.borderColor = '#e74c3c';
+                        return;
+                    }
+                    
+                    // Cambiar estado del botón
+                    const originalHTML = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+                    submitBtn.disabled = true;
+                    
+                    // Restaurar después de 3 segundos (por si hay error)
+                    setTimeout(() => {
+                        submitBtn.innerHTML = originalHTML;
+                        submitBtn.disabled = false;
+                    }, 3000);
+                });
+            }
+            
+            // Limpiar validación cuando se escribe
+            if (emailField) {
+                emailField.addEventListener('input', function() {
+                    this.style.borderColor = '#ddd';
+                });
+            }
+            
+            // Efecto de escritura para placeholder (opcional)
+            function typeDemoEmail() {
+                const demoEmails = [
+                    'ciudadano@cutupu.gob.sv',
+                    'usuario@ejemplo.com',
+                    'correo@municipal.com'
+                ];
+                let current = 0;
+                let charIndex = 0;
+                let isDeleting = false;
+                
+                function type() {
+                    const currentText = demoEmails[current];
+                    
+                    if (!isDeleting && charIndex <= currentText.length) {
+                        emailField.placeholder = currentText.substring(0, charIndex);
+                        charIndex++;
+                        setTimeout(type, 100);
+                    } else if (isDeleting && charIndex >= 0) {
+                        emailField.placeholder = currentText.substring(0, charIndex);
+                        charIndex--;
+                        setTimeout(type, 50);
+                    } else {
+                        isDeleting = !isDeleting;
+                        if (!isDeleting) {
+                            current = (current + 1) % demoEmails.length;
+                        }
+                        setTimeout(type, 1500);
+                    }
+                }
+                
+                if (emailField && emailField.placeholder === '') {
+                    type();
+                }
+            }
+            
+            // Descomenta la siguiente línea si quieres el efecto de escritura
+            // typeDemoEmail();
+        });
+    </script>
+    
+</body>
+</html>

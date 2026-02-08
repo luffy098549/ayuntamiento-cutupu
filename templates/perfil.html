@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Ayuntamiento de Cutupú</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/static.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/perfil.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+<body>
+    <!-- HEADER (mismo que index.html) -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-izquierda">
+                <a href="/" class="logo-principal" aria-label="Ir a la página de inicio">
+                    <img src="{{ url_for('static', filename='img/WhatsApp Image 2026-02-06 at 7.37.02 PM.jpeg') }}" 
+                         alt="Logo del Ayuntamiento de Cutupú"
+                         class="logo-icono"
+                         width="50"
+                         height="50">
+                    <div class="logo-texto">
+                        Ayuntamiento de Cutupú
+                        <span class="logo-subtitulo">Gestión municipal</span>
+                    </div>
+                </a>
+            </div>
+
+            <nav class="nav-principal" aria-label="Navegación principal">
+                <button class="btn-menu-movil" aria-expanded="false" aria-controls="menu-principal" aria-label="Abrir menú de navegación">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                
+                <ul class="nav-lista" id="menu-principal">
+                    <li class="nav-item">
+                        <a href="/" class="nav-enlace">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/servicios" class="nav-enlace">Servicios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/nosotros" class="nav-enlace">Nosotros</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/avisos" class="nav-enlace">Avisos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/transparencia" class="nav-enlace">Transparencia</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/proyectos" class="nav-enlace">Proyectos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/contacto" class="nav-enlace">Contacto</a>
+                    </li>
+                    
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item nav-item-movil">
+                        <a href="/perfil" class="nav-enlace">Mi Perfil</a>
+                    </li>
+                    <li class="nav-item nav-item-movil">
+                        <a href="/logout" class="nav-enlace">Cerrar Sesión</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+
+            <div class="header-derecha">
+                <a href="https://www.gob.do/" class="logo-rd" target="_blank" rel="noopener noreferrer"
+                   aria-label="Visitar página del Gobierno de la República Dominicana">
+                    <img src="{{ url_for('static', filename='img/Escudo-de-Republica-Dominicana-1024x1019.png') }}" 
+                         alt="Escudo de la República Dominicana"
+                         width="45"
+                         height="45">
+                    <span class="logo-rd-texto">República<br>Dominicana</span>
+                </a>
+
+                <div class="separador-vertical"></div>
+
+                <div class="dropdown-perfil">
+                    <button class="btn-perfil" aria-label="Menú de perfil" aria-expanded="false">
+                        <div class="avatar-usuario">
+                            <div class="avatar-iniciales">
+                                {{ current_user.nombre[0] if current_user and current_user.nombre else 'U' }}
+                            </div>
+                        </div>
+                        <span class="nombre-usuario">{{ current_user.nombre if current_user and current_user.nombre else (current_user.email if current_user else 'Usuario') }}</span>
+                        <span class="dropdown-icon">▼</span>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="/perfil" class="dropdown-item">
+                            <span class="dropdown-icon">👤</span>
+                            Mi Perfil
+                        </a>
+                        <a href="/servicios" class="dropdown-item">
+                            <span class="dropdown-icon">🔧</span>
+                            Servicios
+                        </a>
+                        <a href="/logout" class="dropdown-item">
+                            <span class="dropdown-icon">🚪</span>
+                            Cerrar Sesión
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL DEL PERFIL -->
+    <main class="contenido-principal perfil-container">
+        <div class="perfil-wrapper">
+            <!-- Sidebar de navegación -->
+            <aside class="perfil-sidebar">
+                <div class="perfil-resumen">
+                    <div class="perfil-avatar">
+                        <div class="avatar-grande">
+                            {{ current_user.nombre[0] if current_user and current_user.nombre else 'U' }}
+                        </div>
+                        <button class="btn-cambiar-foto" onclick="document.getElementById('file-input').click()">
+                            📷 Cambiar
+                        </button>
+                        <input type="file" id="file-input" accept="image/*" style="display: none;">
+                    </div>
+                    <h2 class="perfil-nombre">{{ current_user.nombre if current_user and current_user.nombre else 'Usuario' }}</h2>
+                    <p class="perfil-email">{{ current_user.email if current_user else '' }}</p>
+                    <div class="perfil-stats">
+        
+                    </div>
+                </div>
+
+                <nav class="perfil-menu">
+                    <a href="#informacion" class="menu-item activo" data-target="informacion">
+                        <span class="menu-icon">👤</span>
+                        Información Personal
+                    </a>
+                    <a href="#seguridad" class="menu-item" data-target="seguridad">
+                        <span class="menu-icon">🔒</span>
+                        Seguridad
+                    </a>
+                    <a href="/servicios" class="menu-item">
+                        <span class="menu-icon">📋</span>
+                        Solicitar Servicios
+                    </a>
+                    <a href="#reportes" class="menu-item" data-target="reportes">
+                        <span class="menu-icon">🚨</span>
+                        Hacer Reportes
+                    </a>
+                    <a href="#denuncias" class="menu-item" data-target="denuncias">
+                        <span class="menu-icon">⚖️</span>
+                        Presentar Denuncias
+                    </a>
+                    <a href="#mis-tramites" class="menu-item" data-target="mis-tramites">
+                        <span class="menu-icon">📋</span>
+                        Mis Trámites
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- Contenido principal del perfil -->
+            <div class="perfil-contenido">
+                <!-- Sección Información Personal -->
+                <section id="informacion" class="perfil-seccion activa">
+                    <h2 class="seccion-titulo">Información Personal</h2>
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form class="perfil-form" method="POST" action="{{ url_for('actualizar_perfil') }}">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="nombre">Nombre Completo</label>
+                                <input type="text" id="nombre" name="nombre" 
+                                       value="{{ current_user.nombre if current_user and current_user.nombre else '' }}"
+                                       placeholder="Ingresa tu nombre completo" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="telefono">Teléfono</label>
+                                <input type="tel" id="telefono" name="telefono" 
+                                       value="{{ current_user.telefono if current_user else '' }}"
+                                       placeholder="(000) 000-0000">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="direccion">Dirección</label>
+                                <input type="text" id="direccion" name="direccion" 
+                                       value="{{ current_user.direccion if current_user else '' }}"
+                                       placeholder="Calle, número, sector">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="cedula">Cédula</label>
+                                <input type="text" id="cedula" name="cedula" 
+                                       value="{{ current_user.cedula if current_user else '' }}"
+                                       placeholder="000-0000000-0">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Correo Electrónico</label>
+                            <input type="email" id="email" value="{{ current_user.email if current_user else '' }}" disabled>
+                            <small class="form-text">Para cambiar el correo, contacta con administración</small>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn-guardar">
+                                💾 Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Sección Seguridad -->
+                <section id="seguridad" class="perfil-seccion">
+                    <h2 class="seccion-titulo">Seguridad y Contraseña</h2>
+                    
+                    <form class="perfil-form" method="POST" action="{{ url_for('cambiar_contrasena') }}">
+                        <div class="form-group">
+                            <label for="contrasena_actual">Contraseña Actual</label>
+                            <input type="password" id="contrasena_actual" name="contrasena_actual" 
+                                   placeholder="Ingresa tu contraseña actual" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="nueva_contrasena">Nueva Contraseña</label>
+                            <input type="password" id="nueva_contrasena" name="nueva_contrasena" 
+                                   placeholder="Mínimo 8 caracteres" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="confirmar_contrasena">Confirmar Contraseña</label>
+                            <input type="password" id="confirmar_contrasena" name="confirmar_contrasena" 
+                                   placeholder="Repite la nueva contraseña" required>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn-guardar">
+                                🔐 Cambiar Contraseña
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Sección Reportes -->
+                <section id="reportes" class="perfil-seccion">
+                    <h2 class="seccion-titulo">Reportar Problemas</h2>
+                    <p class="seccion-descripcion">Reporta problemas en tu comunidad para que los solucionemos.</p>
+                    
+                    <div class="reportes-grid">
+                        <div class="reporte-categoria">
+                            <h3>🔧 Problemas de Infraestructura</h3>
+                            <p>Reportar baches, alumbrado público, señalización, etc.</p>
+                            <a href="{{ url_for('reportar', tipo='infraestructura') }}" class="btn-reportar">
+                                Reportar Ahora
+                            </a>
+                        </div>
+                        
+                        <div class="reporte-categoria">
+                            <h3>🚮 Problemas de Limpieza</h3>
+                            <p>Basura acumulada, recolección, maleza, etc.</p>
+                            <a href="{{ url_for('reportar', tipo='limpieza') }}" class="btn-reportar">
+                                Reportar Ahora
+                            </a>
+                        </div>
+                        
+                        <div class="reporte-categoria">
+                            <h3>⚠️ Emergencias y Peligros</h3>
+                            <p>Árboles caídos, cables sueltos, inundaciones, etc.</p>
+                            <a href="{{ url_for('reportar', tipo='emergencias') }}" class="btn-reportar">
+                                Reportar Ahora
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sección Denuncias -->
+                <section id="denuncias" class="perfil-seccion">
+                    <h2 class="seccion-titulo">Presentar Denuncias</h2>
+                    <p class="seccion-descripcion">Denuncias formales que requieren acción legal o administrativa.</p>
+                    
+                    <div class="tipos-denuncia">
+                        <div class="tipo-denuncia">
+                            <h4>🏗️ Construcciones Irregulares</h4>
+                            <p>Denunciar construcciones sin permiso o que violen normativas.</p>
+                            <a href="{{ url_for('denunciar', tipo='construccion') }}" class="btn-denunciar">
+                                Presentar Denuncia
+                            </a>
+                        </div>
+                        
+                        <div class="tipo-denuncia">
+                            <h4>📢 Ruidos Molestos</h4>
+                            <p>Denunciar ruido excesivo en horas no permitidas.</p>
+                            <a href="{{ url_for('denunciar', tipo='ruidos') }}" class="btn-denunciar">
+                                Presentar Denuncia
+                            </a>
+                        </div>
+                        
+                        <div class="tipo-denuncia">
+                            <h4>🚫 Incumplimiento de Normas</h4>
+                            <p>Denunciar violaciones a ordenanzas municipales.</p>
+                            <a href="{{ url_for('denunciar', tipo='normas') }}" class="btn-denunciar">
+                                Presentar Denuncia
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sección Mis Trámites -->
+                <section id="mis-tramites" class="perfil-seccion">
+                    <h2 class="seccion-titulo">Mis Trámites y Solicitudes</h2>
+                    
+                    <div class="tramites-container">
+                        <div class="tramites-header">
+                            <div class="tramites-filtros">
+                                <button class="filtro-btn activo">Todos</button>
+                                <button class="filtro-btn">Pendientes</button>
+                                <button class="filtro-btn">En Proceso</button>
+                                <button class="filtro-btn">Completados</button>
+                            </div>
+                            <a href="/servicios" class="btn-nuevo-tramite">
+                                + Nuevo Trámite
+                            </a>
+                        </div>
+                        
+                        <div class="tramites-lista">
+                            <div class="tramite-vacio">
+                                <p>No tienes trámites registrados aún.</p>
+                                <a href="/servicios" class="btn-primario">Ir a Servicios</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer footer-horizontal" aria-label="Pie de página">
+        <div class="footer-superior">
+            <div class="footer-contenido-horizontal">
+                <!-- Logo y Descripción -->
+                <div class="footer-logo-descripcion">
+                    <a href="/" class="footer-logo" aria-label="Volver al inicio">
+                        <img src="{{ url_for('static', filename='img/WhatsApp Image 2026-02-06 at 7.37.02 PM.jpeg') }}" 
+                             alt="Logo del Ayuntamiento de Cutupú"
+                             class="footer-logo-img"
+                             width="50"
+                             height="50">
+                        <div>
+                            <h3 class="footer-titulo-logo">Ayuntamiento de Cutupú</h3>
+                            <p class="footer-subtitulo-logo">Gestión Municipal</p>
+                        </div>
+                    </a>
+                    <p class="footer-descripcion-corta">
+                        Comprometidos con el desarrollo y bienestar de nuestra comunidad.
+                    </p>
+                </div>
+
+                <!-- Enlaces y Redes -->
+                <div class="footer-enlaces-redes">
+                    <!-- Enlaces rápidos -->
+                    <div class="footer-enlaces-rapidos">
+                        <h4 class="footer-subtitulo">Enlaces rápidos</h4>
+                        <div class="enlaces-grid">
+                            <a href="/servicios" class="enlace-rapido">Servicios</a>
+                            <a href="/avisos" class="enlace-rapido">Avisos</a>
+                            <a href="/transparencia" class="enlace-rapido">Transparencia</a>
+                            <a href="/proyectos" class="enlace-rapido">Proyectos</a>
+                            <a href="/contacto" class="enlace-rapido">Contacto</a>
+                            <a href="/nosotros" class="enlace-rapido">Nosotros</a>
+                            <a href="/perfil" class="enlace-rapido">Mi Perfil</a>
+                        </div>
+                    </div>
+
+                    <!-- Redes Sociales y Contacto -->
+                    <div class="footer-redes-contacto">
+                        <div class="footer-redes-sociales">
+                            <h4 class="footer-subtitulo">Síguenos</h4>
+                            <div class="redes-iconos">
+                                <a href="https://www.facebook.com/ayuntamientocutupu?locale=es_LA" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   class="redes-icono facebook"
+                                   aria-label="Facebook">
+                                    <span>f</span>
+                                </a>
+                                <a href="https://www.instagram.com/juntamunicipalvillacutupu0107/" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   class="redes-icono instagram"
+                                   aria-label="Instagram">
+                                    <span>ig</span>
+                                </a>
+                                <a href="https://www.youtube.com/results?search_query=ayuntamiento+de+cutupu" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   class="redes-icono youtube"
+                                   aria-label="YouTube">
+                                    <span>yt</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="footer-contacto-email">
+                            <h4 class="footer-subtitulo">Contacto</h4>
+                            <a href="mailto:juntamunicipalrioverdearriba@gmail.com" 
+                               class="footer-email"
+                               aria-label="Enviar email">
+                                📧 juntamunicipalrioverdearriba@gmail.com
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Línea separadora -->
+        <div class="footer-separador"></div>
+
+        <!-- Base del footer -->
+        <div class="footer-base-horizontal">
+            <div class="footer-base-contenido">
+                <!-- Derechos -->
+                <div class="footer-derechos">
+                    <span class="footer-copy">©</span>
+                    <span id="anio-actual">{{ now.year if now else "2026" }}</span>
+                    Ayuntamiento Municipal de Cutupú · Todos los derechos reservados
+                </div>
+
+                <!-- Aviso legal -->
+                <div class="footer-aviso-legal-corto">
+                    <span class="aviso-icono">📚</span>
+                    Aviso Legal: Sitio educativo - No oficial - Libre de derechos
+                </div>
+
+                <!-- Seguridad -->
+                <div class="footer-seguridad">
+                    <span class="seguridad-icono">🔒</span>
+                    Sitio seguro | 
+                    <span class="educativo-icono">📖</span>
+                    Proyecto educativo
+                </div>
+            </div>
+        </div>
+    </footer>
+
+ 
+    <script src="{{ url_for('static', filename='js/perfil.js') }}"></script>
+</body>
+</html>

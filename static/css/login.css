@@ -1,0 +1,583 @@
+/* ===================================
+   🎨 PORTAL AZUL - LOGIN MEJORADO
+   Diseño institucional moderno y minimalista
+   =================================== */
+
+/* ===================================
+   📐 RESET Y CONFIGURACIÓN BASE
+   =================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Paleta de colores institucional */
+    --azul-principal: #2C5DAA;
+    --azul-hover: #1E4A8A;
+    --azul-claro: #4A7DC3;
+    --azul-suave: #E8F0FE;
+    --fondo-gris: #F4F7FB;
+    --blanco: #FFFFFF;
+    --gris-claro: #E9ECEF;
+    --gris-medio: #8B98A8;
+    --gris-texto: #1F2D3D;
+    --acento-amarillo: #F2B705;
+    --acento-amarillo-hover: #E0A800;
+    --sombra-suave: rgba(31, 45, 61, 0.05);
+    --sombra-media: rgba(31, 45, 61, 0.1);
+    --sombra-hover: rgba(31, 45, 61, 0.15);
+    
+    /* Variables de diseño */
+    --border-radius: 6px;
+    --border-radius-lg: 10px;
+    --transition-default: all 0.2s ease;
+}
+
+/* ===================================
+   🏛️ ESTRUCTURA GENERAL
+   =================================== */
+body.login-page {
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.5;
+    color: var(--gris-texto);
+    background: var(--fondo-gris);
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===================================
+   🎯 HEADER PRINCIPAL
+   =================================== */
+.login-header {
+    background: var(--blanco);
+    padding: 2.5rem 0;
+    text-align: center;
+    border-bottom: 1px solid var(--gris-claro);
+    box-shadow: 0 2px 4px var(--sombra-suave);
+}
+
+.login-header .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.login-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--azul-principal);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.login-header h1 i {
+    font-size: 1.5rem;
+    color: var(--azul-principal);
+}
+
+.login-header p {
+    font-size: 0.95rem;
+    color: var(--gris-medio);
+    font-weight: 500;
+}
+
+/* ===================================
+   🧭 NAVBAR SIMPLIFICADA
+   =================================== */
+.navbar {
+    background: var(--blanco);
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--gris-claro);
+}
+
+.navbar .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar .logo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--azul-principal);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.navbar .logo:before {
+    content: "🏛️";
+    font-size: 1.2rem;
+}
+
+.btn-acceso {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: var(--blanco);
+    color: var(--azul-principal);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--azul-suave);
+    transition: var(--transition-default);
+}
+
+.btn-acceso:hover {
+    background: var(--azul-suave);
+    border-color: var(--azul-claro);
+    transform: translateY(-1px);
+}
+
+.btn-acceso i {
+    font-size: 0.9rem;
+}
+
+/* ===================================
+   🎭 CONTENEDOR PRINCIPAL
+   =================================== */
+.login-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem 1.5rem;
+    background: var(--fondo-gris);
+}
+
+/* ===================================
+   📋 MÓDULO DE FORMULARIO MEJORADO
+   =================================== */
+.form-module {
+    background: var(--blanco);
+    width: 100%;
+    max-width: 420px;
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 4px 20px var(--sombra-media);
+    border: 1px solid var(--gris-claro);
+    overflow: hidden;
+}
+
+/* ===================================
+   🔘 TOGGLE MEJORADO
+   =================================== */
+.form-toggle {
+    display: flex;
+    background: var(--fondo-gris);
+    padding: 4px;
+    margin: 1.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gris-claro);
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 0.875rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-radius: calc(var(--border-radius) - 2px);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--gris-medio);
+    transition: var(--transition-default);
+    text-align: center;
+}
+
+.toggle-btn:hover:not(.active) {
+    color: var(--azul-principal);
+    background: rgba(44, 93, 170, 0.05);
+}
+
+.toggle-btn.active {
+    background: var(--blanco);
+    color: var(--azul-principal);
+    box-shadow: 0 2px 8px var(--sombra-suave);
+    border: 1px solid var(--azul-suave);
+}
+
+/* ===================================
+   📝 CONTENIDO DEL FORMULARIO
+   =================================== */
+.form-content {
+    padding: 0 1.5rem 1.5rem;
+}
+
+/* Grupos de formulario mejorados */
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--gris-texto);
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.2px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--gris-claro);
+    border-radius: var(--border-radius);
+    font-size: 0.9375rem;
+    background: var(--blanco);
+    color: var(--gris-texto);
+    font-family: inherit;
+    transition: var(--transition-default);
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--azul-principal);
+    box-shadow: 0 0 0 3px var(--azul-suave);
+}
+
+.form-group input::placeholder {
+    color: var(--gris-medio);
+    opacity: 0.7;
+}
+
+/* Indicador de contraseña */
+.password-container {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--gris-medio);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.25rem;
+}
+
+.password-toggle:hover {
+    color: var(--azul-principal);
+}
+
+/* ===================================
+   🎯 BOTÓN PRINCIPAL MEJORADO
+   =================================== */
+.btn-submit {
+    width: 100%;
+    padding: 1rem;
+    background: var(--acento-amarillo);
+    color: var(--gris-texto);
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    transition: var(--transition-default);
+    font-family: inherit;
+}
+
+.btn-submit:hover {
+    background: var(--acento-amarillo-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(242, 183, 5, 0.2);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+}
+
+.btn-submit i {
+    font-size: 1rem;
+}
+
+/* ===================================
+   🔗 ENLACES DEL FORMULARIO
+   =================================== */
+.form-links {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--gris-claro);
+}
+
+.form-links a {
+    color: var(--azul-principal);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition-default);
+}
+
+.form-links a:hover {
+    color: var(--azul-hover);
+    text-decoration: underline;
+}
+
+.form-links a i {
+    font-size: 0.8rem;
+}
+
+/* ===================================
+   🦶 FOOTER MEJORADO
+   =================================== */
+.footer {
+    background: var(--blanco);
+    padding: 1.5rem 0;
+    text-align: center;
+    border-top: 1px solid var(--gris-claro);
+    margin-top: auto;
+}
+
+.footer .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.footer p {
+    color: var(--gris-medio);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* ===================================
+   ⚠️ MENSAJES FLASH MEJORADOS
+   =================================== */
+.flash-messages {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1000;
+    max-width: 400px;
+    width: 90%;
+}
+
+.alert {
+    padding: 1rem 1.25rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    border: 1px solid;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.alert i {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.alert-success {
+    background: #f0f9f0;
+    color: #1e7b1e;
+    border-color: #c3e6c3;
+}
+
+.alert-success i {
+    color: #1e7b1e;
+}
+
+.alert-error {
+    background: #fdf0f0;
+    color: #c53030;
+    border-color: #f5c6cb;
+}
+
+.alert-error i {
+    color: #c53030;
+}
+
+.alert-warning {
+    background: #fff8e6;
+    color: #856404;
+    border-color: #ffeaa7;
+}
+
+.alert-warning i {
+    color: #856404;
+}
+
+.alert-info {
+    background: #e8f4f8;
+    color: #0c5460;
+    border-color: #bee5eb;
+}
+
+.alert-info i {
+    color: #0c5460;
+}
+
+/* ===================================
+   📱 RESPONSIVE DESIGN MEJORADO
+   =================================== */
+@media (max-width: 768px) {
+    .login-header {
+        padding: 2rem 0;
+    }
+    
+    .login-header h1 {
+        font-size: 1.5rem;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .login-header p {
+        font-size: 0.875rem;
+    }
+    
+    .navbar .container,
+    .login-header .container,
+    .footer .container {
+        padding: 0 1.25rem;
+    }
+    
+    .login-container {
+        padding: 2rem 1rem;
+    }
+    
+    .form-module {
+        max-width: 100%;
+        margin: 0 1rem;
+    }
+    
+    .form-toggle {
+        margin: 1rem;
+    }
+    
+    .toggle-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+    }
+    
+    .form-content {
+        padding: 0 1.25rem 1.25rem;
+    }
+    
+    .flash-messages {
+        left: 1rem;
+        right: 1rem;
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-header {
+        padding: 1.5rem 0;
+    }
+    
+    .login-header h1 {
+        font-size: 1.25rem;
+    }
+    
+    .navbar {
+        padding: 0.75rem 0;
+    }
+    
+    .btn-acceso {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+    
+    .toggle-btn {
+        padding: 0.625rem 0.875rem;
+    }
+    
+    .form-group input {
+        padding: 0.75rem 0.875rem;
+    }
+    
+    .btn-submit {
+        padding: 0.875rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* ===================================
+   🎨 UTILIDADES Y ESTADOS
+   =================================== */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Focus visible mejorado */
+:focus-visible {
+    outline: 2px solid var(--azul-principal);
+    outline-offset: 2px;
+}
+
+/* Mejora de contraste */
+@media (prefers-contrast: high) {
+    :root {
+        --azul-principal: #1E4A8A;
+        --gris-texto: #000000;
+        --acento-amarillo: #D4A000;
+    }
+    
+    .btn-submit {
+        border: 2px solid #000000;
+    }
+}
+
+/* Reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ===================================
+   🛡️ ESTADOS DE VALIDACIÓN
+   =================================== */
+.form-group input:valid:not(:placeholder-shown) {
+    border-color: #28a745;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2328a745'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") no-repeat right 1rem center/1rem;
+}
+
+.form-group input:invalid:not(:placeholder-shown) {
+    border-color: #dc3545;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23dc3545'%3E%3Cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3E%3C/svg%3E") no-repeat right 1rem center/1rem;
+}

@@ -1,0 +1,677 @@
+/* ================================================
+   RESTABLECER CONTRASEÑA - CSS
+   Ayuntamiento de Cutupú
+   ================================================ */
+
+/* RESET Y VARIABLES */
+:root {
+    --primary-color: #4A90E2;
+    --primary-dark: #357ABD;
+    --success-color: #27ae60;
+    --danger-color: #e74c3c;
+    --warning-color: #f39c12;
+    --info-color: #3498db;
+    --light-bg: #f0f4f8;
+    --card-bg: #ffffff;
+    --text-dark: #2c3e50;
+    --text-light: #7f8c8d;
+    --border-color: #dce4ec;
+    --shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body.login-page {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ================================================
+   HEADER
+   ================================================ */
+.header {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1.5rem 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-icon {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+}
+
+.header-text h1 {
+    font-size: 1.8rem;
+    color: var(--text-dark);
+    margin-bottom: 0.25rem;
+}
+
+.header-text p {
+    font-size: 0.95rem;
+    color: var(--text-light);
+}
+
+/* ================================================
+   CONTENIDO PRINCIPAL
+   ================================================ */
+.main-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.reset-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    max-width: 600px;
+    width: 100%;
+    overflow: hidden;
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ================================================
+   ENCABEZADO DE LA TARJETA
+   ================================================ */
+.card-top {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 2.5rem 2rem;
+    text-align: center;
+}
+
+.card-icon {
+    background: rgba(255, 255, 255, 0.2);
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+}
+
+.card-icon i {
+    font-size: 2rem;
+}
+
+.card-top h2 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.card-top p {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+/* ================================================
+   CUERPO DE LA TARJETA
+   ================================================ */
+.card-body {
+    padding: 2rem;
+}
+
+/* ================================================
+   PROGRESO
+   ================================================ */
+.reset-progress {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.reset-progress::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 15%;
+    right: 15%;
+    height: 2px;
+    background: var(--border-color);
+    z-index: 0;
+}
+
+.reset-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+}
+
+.step-dot {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: var(--text-light);
+    transition: all 0.3s;
+}
+
+.reset-step.completed .step-dot {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.reset-step.active .step-dot {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.2);
+}
+
+.step-name {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: center;
+}
+
+.reset-step.active .step-name {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* ================================================
+   TEMPORIZADOR
+   ================================================ */
+.timer {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+    border-left: 4px solid var(--warning-color);
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.timer i {
+    font-size: 1.5rem;
+    color: var(--warning-color);
+}
+
+.timer strong {
+    display: block;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.time-remaining {
+    color: var(--warning-color);
+    font-weight: 600;
+}
+
+/* ================================================
+   INSTRUCCIONES
+   ================================================ */
+.instructions {
+    background: var(--light-bg);
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid var(--info-color);
+}
+
+.instructions h4 {
+    color: var(--text-dark);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.instructions h4 i {
+    color: var(--info-color);
+}
+
+.instructions ul {
+    list-style: none;
+    margin-left: 0;
+}
+
+.instructions li {
+    padding: 0.4rem 0;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.instructions li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+/* ================================================
+   MENSAJES DEL SISTEMA
+   ================================================ */
+.message-box {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-box.info {
+    background: #d1ecf1;
+    border-left: 4px solid var(--info-color);
+    color: #0c5460;
+}
+
+.message-box.success {
+    background: #d4edda;
+    border-left: 4px solid var(--success-color);
+    color: #155724;
+}
+
+.message-box.error {
+    background: #f8d7da;
+    border-left: 4px solid var(--danger-color);
+    color: #721c24;
+}
+
+.message-box strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+/* ================================================
+   FORMULARIO
+   ================================================ */
+#resetForm {
+    margin-top: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.form-group label i {
+    color: var(--primary-color);
+    margin-right: 0.25rem;
+}
+
+.password-container {
+    position: relative;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.85rem 3rem 0.85rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s;
+    background: white;
+    color: var(--text-dark);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.toggle-password {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    padding: 0 1rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: color 0.3s;
+}
+
+.toggle-password:hover {
+    color: var(--primary-color);
+}
+
+/* ================================================
+   INDICADOR DE FORTALEZA
+   ================================================ */
+.password-strength {
+    width: 100%;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: all 0.3s;
+    border-radius: 2px;
+}
+
+.strength-text {
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+.form-text {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* ================================================
+   REGLAS DE CONTRASEÑA
+   ================================================ */
+.password-rules {
+    background: var(--light-bg);
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.rules-title {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rules-title i {
+    color: var(--primary-color);
+}
+
+.rule {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+}
+
+.rule i {
+    font-size: 0.875rem;
+    width: 16px;
+}
+
+.rule.invalid {
+    color: var(--danger-color);
+}
+
+.rule.invalid i {
+    color: var(--danger-color);
+}
+
+.rule.valid {
+    color: var(--success-color);
+}
+
+.rule.valid i {
+    color: var(--success-color);
+}
+
+/* ================================================
+   BOTONES
+   ================================================ */
+.btn {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ================================================
+   ENLACES DE NAVEGACIÓN
+   ================================================ */
+.action-links {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.back-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s;
+}
+
+.back-link:hover {
+    color: var(--primary-dark);
+    gap: 0.75rem;
+}
+
+/* ================================================
+   FOOTER
+   ================================================ */
+.footer {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1.5rem 2rem;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    margin-top: auto;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.footer-container p {
+    color: var(--text-dark);
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.security {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.security i {
+    font-size: 1rem;
+}
+
+/* ================================================
+   RESPONSIVE
+   ================================================ */
+@media (max-width: 768px) {
+    .header {
+        padding: 1rem 1.5rem;
+    }
+    
+    .header-icon {
+        font-size: 2rem;
+    }
+    
+    .header-text h1 {
+        font-size: 1.4rem;
+    }
+    
+    .header-text p {
+        font-size: 0.85rem;
+    }
+    
+    .reset-card {
+        margin: 0 0.5rem;
+    }
+    
+    .card-top {
+        padding: 2rem 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .reset-progress {
+        gap: 0.5rem;
+    }
+    
+    .step-dot {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9rem;
+    }
+    
+    .step-name {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-top h2 {
+        font-size: 1.5rem;
+    }
+    
+    .card-top p {
+        font-size: 0.9rem;
+    }
+    
+    .reset-progress::before {
+        left: 10%;
+        right: 10%;
+    }
+    
+    .step-name {
+        display: none;
+    }
+    
+    .timer {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* ================================================
+   ANIMACIONES ADICIONALES
+   ================================================ */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.btn:not(:disabled):hover {
+    animation: pulse 2s infinite;
+}
+
+/* ================================================
+   UTILIDADES
+   ================================================ */
+.text-center {
+    text-align: center;
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }

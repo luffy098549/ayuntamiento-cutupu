@@ -1,0 +1,272 @@
+/* static/css/contraseña.css */
+
+/* ===== RESET Y ESTILOS BASE ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== HEADER ===== */
+.header {
+    background: white;
+    padding: 1rem 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-icon {
+    font-size: 2rem;
+    color: #2c3e50;
+}
+
+.header-text h1 {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.header-text p {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+/* ===== CONTENIDO PRINCIPAL ===== */
+.main-content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1rem;
+}
+
+/* ===== TARJETA DE RECUPERACIÓN ===== */
+.recovery-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    width: 100%;
+    max-width: 500px;
+    overflow: hidden;
+}
+
+/* Encabezado de la tarjeta */
+.card-top {
+    background: #3498db;
+    color: white;
+    padding: 2rem;
+    text-align: center;
+}
+
+.card-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.card-top h2 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.card-top p {
+    opacity: 0.9;
+}
+
+/* Cuerpo de la tarjeta */
+.card-body {
+    padding: 2rem;
+}
+
+/* ===== MENSAJES DEL SISTEMA ===== */
+.message-box {
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+}
+
+.message-box.info {
+    background: #e3f2fd;
+    border-left-color: #2196f3;
+}
+
+.message-box.success {
+    background: #e8f5e9;
+    border-left-color: #4caf50;
+}
+
+.message-box.error {
+    background: #ffebee;
+    border-left-color: #f44336;
+}
+
+.message-box strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #2c3e50;
+}
+
+/* Enlace de token para desarrollo */
+.token-link {
+    display: block;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    border: 1px solid #ddd;
+    color: #3498db;
+    text-decoration: none;
+    word-break: break-all;
+    font-size: 0.9rem;
+}
+
+.token-link:hover {
+    background: #f5f5f5;
+}
+
+/* ===== FORMULARIOS ===== */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.form-text {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: #7f8c8d;
+}
+
+/* ===== BOTONES ===== */
+.btn {
+    display: block;
+    width: 100%;
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn i {
+    margin-right: 8px;
+}
+
+/* ===== ENLACES ===== */
+.back-link {
+    display: block;
+    text-align: center;
+    margin-top: 1.5rem;
+    color: #3498db;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+    background: #2c3e50;
+    color: white;
+    text-align: center;
+    padding: 1.5rem 0;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.footer p {
+    margin-bottom: 0.5rem;
+}
+
+.security {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .header-text h1 {
+        font-size: 1.3rem;
+    }
+    
+    .card-top {
+        padding: 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .card-top h2 {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .card-top {
+        padding: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .card-icon {
+        font-size: 2.5rem;
+    }
+}
