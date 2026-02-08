@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-import sqlite3
+import psycopg2  # <-- PostgreSQL en lugar de sqlite3
 import os
 from datetime import datetime, timedelta
 from functools import wraps
@@ -13,13 +13,33 @@ from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = 'cutupu-secret-key-123'
-app.config['DATABASE'] = 'cutupu.db'
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
 
 # ===============================
-# CONFIGURACIÓN BASADA EN LA BD REAL
+# CONEXIÓN A POSTGRESQL
+# ===============================
+DATABASE_URL = "postgresql://ayuntamiento:qCKauldXNtrUabI8w8hHU6M9VphgjsfE@dpg-d64dt7ngi27c73avjru0-a/ayuntamiento_8npe"
+
+def get_db():
+    """Conectar a PostgreSQL"""
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn
+
+def dict_fetchall(cursor):
+    """Convertir resultados a diccionario"""
+    columns = [desc[0] for desc in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+def dict_fetchone(cursor):
+    """Convertir un resultado a diccionario"""
+    columns = [desc[0] for desc in cursor.description]
+    row = cursor.fetchone()
+    return dict(zip(columns, row)) if row else None
+
+# ===============================
+# CONFIGURACIÓN
 # ===============================
 
 ADMIN_EMAIL = 'admin@ayuntamiento.gob'
@@ -27,277 +47,204 @@ ADMIN_EMAIL = 'admin@ayuntamiento.gob'
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
-def get_db():
-    """Conectar a la base de datos existente"""
-    conn = sqlite3.connect(app.config['DATABASE'])
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def init_db():
-    """Inicializar la base de datos adaptándose a la estructura existente"""
+def verificar_y_preparar_db():
+    """Crear todas las tablas necesarias en PostgreSQL"""
+    print("🔧 Inicializando PostgreSQL...")
+    
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        # Conectar a PostgreSQL
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
         
-        # Verificar y crear tablas faltantes basadas en las que ya tienes
-        tablas_existentes = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-        tablas_nombres = [t[0] for t in tablas_existentes]
+        print("✅ Conectado a PostgreSQL")
         
-        # Tabla usuarios si no existe
-        if 'usuarios' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE usuarios (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre TEXT NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    telefono TEXT,
-                    direccion TEXT,
-                    cedula TEXT,
-                    rol_id INTEGER DEFAULT 2,
-                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    activo BOOLEAN DEFAULT 1
-                )
-            ''')
-            print("✅ Tabla 'usuarios' creada")
+        # 1. Tabla USUARIOS
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id SERIAL PRIMARY KEY,
+            nombre TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            telefono TEXT,
+            direccion TEXT,
+            cedula TEXT,
+            rol_id INTEGER DEFAULT 2,
+            creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            activo BOOLEAN DEFAULT TRUE
+        )
+        """)
+        print("✅ Tabla 'usuarios' creada/verificada")
         
-        # Si existe tabla usuarios pero no tiene creado_en, agregarlo
-        elif 'usuarios' in tablas_nombres:
-            cursor.execute("PRAGMA table_info(usuarios)")
-            columnas = [col[1] for col in cursor.fetchall()]
-            if 'creado_en' not in columnas:
-                cursor.execute('ALTER TABLE usuarios ADD COLUMN creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
-                print("✅ Columna 'creado_en' agregada a tabla 'usuarios'")
+        # 2. Tabla REPORTES
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS reportes (
+            id SERIAL PRIMARY KEY,
+            usuario_id INTEGER NOT NULL,
+            titulo TEXT NOT NULL,
+            descripcion TEXT NOT NULL,
+            categoria TEXT NOT NULL,
+            ubicacion TEXT NOT NULL,
+            latitud REAL,
+            longitud REAL,
+            estado TEXT DEFAULT 'pendiente',
+            prioridad TEXT DEFAULT 'media',
+            fecha_reporte TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            imagen TEXT,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+        )
+        """)
+        print("✅ Tabla 'reportes' creada/verificada")
         
-        # Tabla reportes si no existe
-        if 'reportes' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE reportes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    usuario_id INTEGER NOT NULL,
-                    titulo TEXT NOT NULL,
-                    descripcion TEXT NOT NULL,
-                    categoria TEXT NOT NULL,
-                    ubicacion TEXT NOT NULL,
-                    latitud REAL,
-                    longitud REAL,
-                    estado TEXT DEFAULT 'pendiente',
-                    prioridad TEXT DEFAULT 'media',
-                    fecha_reporte TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    imagen TEXT,
-                    FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
-                )
-            ''')
-            print("✅ Tabla 'reportes' creada")
+        # 3. Tabla DENUNCIAS
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS denuncias (
+            id SERIAL PRIMARY KEY,
+            usuario_id INTEGER NOT NULL,
+            titulo TEXT NOT NULL,
+            descripcion TEXT NOT NULL,
+            tipo TEXT NOT NULL,
+            denunciado_nombre TEXT,
+            denunciado_cargo TEXT,
+            denunciado_institucion TEXT,
+            pruebas TEXT,
+            estado TEXT DEFAULT 'en_revision',
+            fecha_denuncia TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            anonimo BOOLEAN DEFAULT FALSE,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+        )
+        """)
+        print("✅ Tabla 'denuncias' creada/verificada")
         
-        # Tabla denuncias si no existe
-        if 'denuncias' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE denuncias (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    usuario_id INTEGER NOT NULL,
-                    titulo TEXT NOT NULL,
-                    descripcion TEXT NOT NULL,
-                    tipo TEXT NOT NULL,
-                    denunciado_nombre TEXT,
-                    denunciado_cargo TEXT,
-                    denunciado_institucion TEXT,
-                    pruebas TEXT,
-                    estado TEXT DEFAULT 'en_revision',
-                    fecha_denuncia TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    anonimo BOOLEAN DEFAULT 0,
-                    FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
-                )
-            ''')
-            print("✅ Tabla 'denuncias' creada")
+        # 4. Tabla COMENTARIOS
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS comentarios (
+            id SERIAL PRIMARY KEY,
+            reporte_id INTEGER NOT NULL,
+            usuario_id INTEGER NOT NULL,
+            contenido TEXT NOT NULL,
+            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            tipo TEXT DEFAULT 'comentario',
+            FOREIGN KEY (reporte_id) REFERENCES reportes (id),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+        )
+        """)
+        print("✅ Tabla 'comentarios' creada/verificada")
         
-        # Tabla comentarios si no existe
-        if 'comentarios' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE comentarios (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    reporte_id INTEGER NOT NULL,
-                    usuario_id INTEGER NOT NULL,
-                    contenido TEXT NOT NULL,
-                    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    tipo TEXT DEFAULT 'comentario',
-                    FOREIGN KEY (reporte_id) REFERENCES reportes (id),
-                    FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
-                )
-            ''')
-            print("✅ Tabla 'comentarios' creada")
+        # 5. Tabla SERVICIOS
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS servicios (
+            id SERIAL PRIMARY KEY,
+            nombre TEXT NOT NULL,
+            descripcion TEXT NOT NULL,
+            icono TEXT,
+            orden INTEGER DEFAULT 0,
+            activo BOOLEAN DEFAULT TRUE
+        )
+        """)
+        print("✅ Tabla 'servicios' creada/verificada")
         
-        # Si no existe tabla servicios, crearla con estructura completa
-        if 'servicios' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE servicios (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre TEXT NOT NULL,
-                    descripcion TEXT NOT NULL,
-                    icono TEXT,
-                    orden INTEGER DEFAULT 0,
-                    activo BOOLEAN DEFAULT 1
-                )
-            ''')
-            print("✅ Tabla 'servicios' creada")
-            
-            # Insertar servicios de ejemplo
-            servicios_ejemplo = [
+        # Insertar servicios por defecto si la tabla está vacía
+        cur.execute("SELECT COUNT(*) FROM servicios")
+        if cur.fetchone()[0] == 0:
+            servicios = [
                 ('Atención Ciudadana', 'Servicio de atención y orientación a los ciudadanos', 'fa-users', 1),
                 ('Gestión de Trámites', 'Procesamiento de documentos y certificados', 'fa-file-alt', 2),
                 ('Denuncias y Reportes', 'Sistema de denuncias y reportes ciudadanos', 'fa-exclamation-triangle', 3),
                 ('Proyectos Municipales', 'Información sobre proyectos en ejecución', 'fa-project-diagram', 4),
                 ('Transparencia', 'Acceso a información pública municipal', 'fa-chart-line', 5)
             ]
-            
-            for servicio in servicios_ejemplo:
-                cursor.execute('''
-                    INSERT INTO servicios (nombre, descripcion, icono, orden) VALUES (?, ?, ?, ?)
-                ''', servicio)
-        
-        # Si no existe tabla proyectos, crearla con estructura completa
-        if 'proyectos' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE proyectos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre TEXT NOT NULL,
-                    descripcion TEXT NOT NULL,
-                    imagen TEXT,
-                    fecha_inicio DATE,
-                    fecha_fin DATE,
-                    estado TEXT DEFAULT 'en_progreso',
-                    presupuesto REAL,
-                    porcentaje_completado INTEGER DEFAULT 0,
-                    activo BOOLEAN DEFAULT 1
+            for servicio in servicios:
+                cur.execute(
+                    "INSERT INTO servicios (nombre, descripcion, icono, orden) VALUES (%s, %s, %s, %s)",
+                    servicio
                 )
-            ''')
-            print("✅ Tabla 'proyectos' creada")
+            print("✅ Servicios por defecto insertados")
         
-        # Si no existe tabla avisos, crearla con estructura completa
-        if 'avisos' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE avisos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    titulo TEXT NOT NULL,
-                    contenido TEXT NOT NULL,
-                    tipo TEXT DEFAULT 'general',
-                    fecha_publicacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    fecha_expiracion DATE,
-                    importante BOOLEAN DEFAULT 0,
-                    activo BOOLEAN DEFAULT 1
-                )
-            ''')
-            print("✅ Tabla 'avisos' creada")
+        # 6. Tabla PROYECTOS
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS proyectos (
+            id SERIAL PRIMARY KEY,
+            nombre TEXT NOT NULL,
+            descripcion TEXT NOT NULL,
+            imagen TEXT,
+            fecha_inicio DATE,
+            fecha_fin DATE,
+            estado TEXT DEFAULT 'en_progreso',
+            presupuesto REAL,
+            porcentaje_completado INTEGER DEFAULT 0,
+            activo BOOLEAN DEFAULT TRUE
+        )
+        """)
+        print("✅ Tabla 'proyectos' creada/verificada")
         
-        # Tabla reset_tokens si no existe
-        if 'reset_tokens' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE reset_tokens (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    token TEXT UNIQUE NOT NULL,
-                    expiracion TIMESTAMP NOT NULL,
-                    usado BOOLEAN DEFAULT 0,
-                    FOREIGN KEY (user_id) REFERENCES usuarios (id)
-                )
-            ''')
-            print("✅ Tabla 'reset_tokens' creada")
+        # 7. Tabla AVISOS
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS avisos (
+            id SERIAL PRIMARY KEY,
+            titulo TEXT NOT NULL,
+            contenido TEXT NOT NULL,
+            tipo TEXT DEFAULT 'general',
+            fecha_publicacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            fecha_expiracion DATE,
+            importante BOOLEAN DEFAULT FALSE,
+            activo BOOLEAN DEFAULT TRUE
+        )
+        """)
+        print("✅ Tabla 'avisos' creada/verificada")
         
-        # Tabla contactos si no existe
-        if 'contactos' not in tablas_nombres:
-            cursor.execute('''
-                CREATE TABLE contactos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre TEXT NOT NULL,
-                    email TEXT NOT NULL,
-                    telefono TEXT,
-                    asunto TEXT NOT NULL,
-                    mensaje TEXT NOT NULL,
-                    estado TEXT DEFAULT 'nuevo',
-                    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    respuesta TEXT
-                )
-            ''')
-            print("✅ Tabla 'contactos' creada")
+        # 8. Tabla RESET_TOKENS
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS reset_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            expiracion TIMESTAMP NOT NULL,
+            usado BOOLEAN DEFAULT FALSE,
+            FOREIGN KEY (user_id) REFERENCES usuarios (id)
+        )
+        """)
+        print("✅ Tabla 'reset_tokens' creada/verificada")
         
-        # Insertar usuario admin si no existe
-        admin_hash = generate_password_hash('admin123')
-        cursor.execute('''
-            INSERT OR IGNORE INTO usuarios (nombre, email, password_hash, rol_id, creado_en)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ''', ('Administrador', ADMIN_EMAIL, admin_hash, 1))
+        # 9. Tabla CONTACTOS
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS contactos (
+            id SERIAL PRIMARY KEY,
+            nombre TEXT NOT NULL,
+            email TEXT NOT NULL,
+            telefono TEXT,
+            asunto TEXT NOT NULL,
+            mensaje TEXT NOT NULL,
+            estado TEXT DEFAULT 'nuevo',
+            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            respuesta TEXT
+        )
+        """)
+        print("✅ Tabla 'contactos' creada/verificada")
+        
+        # 10. Crear usuario ADMIN si no existe
+        admin_password = generate_password_hash('admin123')
+        
+        cur.execute("SELECT id FROM usuarios WHERE email = %s", (ADMIN_EMAIL,))
+        if not cur.fetchone():
+            cur.execute(
+                "INSERT INTO usuarios (nombre, email, password_hash, rol_id) VALUES (%s, %s, %s, %s)",
+                ('Administrador', ADMIN_EMAIL, admin_password, 1)
+            )
+            print("✅ Usuario admin creado")
+        else:
+            print("✅ Usuario admin ya existe")
         
         conn.commit()
+        cur.close()
         conn.close()
+        
+        print("🎉 Base de datos PostgreSQL inicializada correctamente")
         return True
         
     except Exception as e:
-        print(f"❌ Error en init_db: {e}")
-        return False
-
-def verificar_y_preparar_db():
-    """Verificar y preparar la base de datos con la estructura REAL"""
-    try:
-        if not init_db():
-            return False
-        
-        conn = get_db()
-        
-        # Verificar tablas
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tablas_existentes = [row[0] for row in cursor.fetchall()]
-        
-        print(f"✅ Base de datos verificada: {app.config['DATABASE']}")
-        print(f"📊 Tablas encontradas: {', '.join(tablas_existentes)}")
-        
-        # Verificar estructura de tabla usuarios
-        cursor = conn.execute("PRAGMA table_info(usuarios)")
-        columnas_info = cursor.fetchall()
-        
-        print("\n🔍 Estructura de tabla 'usuarios':")
-        for col in columnas_info:
-            print(f"   {col[1]} ({col[2]})")
-        
-        # Verificar usuario admin
-        admin = conn.execute(
-            'SELECT id, nombre, email, password_hash FROM usuarios WHERE email = ?',
-            (ADMIN_EMAIL,)
-        ).fetchone()
-        
-        if admin:
-            print(f"\n👤 Usuario admin encontrado:")
-            print(f"   ID: {admin['id']}")
-            print(f"   Nombre: {admin['nombre']}")
-            print(f"   Email: {admin['email']}")
-        else:
-            print(f"\n⚠️  Usuario admin no encontrado, creando...")
-            admin_hash = generate_password_hash('admin123')
-            cursor = conn.cursor()
-            cursor.execute(
-                'INSERT INTO usuarios (nombre, email, password_hash, rol_id, creado_en) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                ('Administrador', ADMIN_EMAIL, admin_hash, 1)
-            )
-            conn.commit()
-            print(f"✅ Usuario admin creado")
-        
-        # Contar registros
-        total_usuarios = conn.execute('SELECT COUNT(*) FROM usuarios').fetchone()[0]
-        
-        # Verificar si existen otras tablas importantes y contar registros
-        for tabla in ['reportes', 'denuncias', 'servicios', 'proyectos', 'avisos']:
-            if tabla in tablas_existentes:
-                count = conn.execute(f'SELECT COUNT(*) FROM {tabla}').fetchone()[0]
-                print(f"   📊 {tabla.capitalize()}: {count}")
-            else:
-                print(f"   📊 {tabla.capitalize()}: Tabla no existe")
-        
-        conn.close()
-        return True
-        
-    except Exception as e:
-        print(f"\n❌ Error al verificar base de datos: {e}")
+        print(f"❌ Error al inicializar PostgreSQL: {e}")
         return False
 
 # ===============================
@@ -322,13 +269,15 @@ def admin_required(f):
             return redirect('/login')
         
         conn = get_db()
-        usuario = conn.execute(
-            'SELECT rol_id FROM usuarios WHERE id = ?',
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT rol_id FROM usuarios WHERE id = %s',
             (session['user_id'],)
-        ).fetchone()
+        )
+        usuario = cur.fetchone()
         conn.close()
         
-        if not usuario or usuario['rol_id'] != 1:
+        if not usuario or usuario[0] != 1:
             flash('Acceso denegado. Se requieren permisos de administrador', 'error')
             return redirect('/')
         
@@ -338,12 +287,14 @@ def admin_required(f):
 def get_user_role():
     if 'user_id' in session:
         conn = get_db()
-        usuario = conn.execute(
-            'SELECT rol_id FROM usuarios WHERE id = ?',
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT rol_id FROM usuarios WHERE id = %s',
             (session['user_id'],)
-        ).fetchone()
+        )
+        usuario = cur.fetchone()
         conn.close()
-        return usuario['rol_id'] if usuario else 2
+        return usuario[0] if usuario else 2
     return 2
 
 # ===============================
@@ -356,45 +307,53 @@ def index():
     """Página principal"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         # Obtener servicios
         try:
-            servicios = conn.execute(
-                'SELECT * FROM servicios WHERE activo = 1 ORDER BY orden LIMIT 6'
-            ).fetchall()
+            cur.execute(
+                'SELECT * FROM servicios WHERE activo = TRUE ORDER BY orden LIMIT 6'
+            )
+            servicios = dict_fetchall(cur)
         except:
             servicios = []
         
         # Obtener avisos importantes
         try:
-            avisos = conn.execute(
+            cur.execute(
                 '''SELECT * FROM avisos 
-                   WHERE importante = 1 AND activo = 1 
-                   AND (fecha_expiracion IS NULL OR fecha_expiracion >= DATE('now'))
+                   WHERE importante = TRUE AND activo = TRUE 
+                   AND (fecha_expiracion IS NULL OR fecha_expiracion >= CURRENT_DATE)
                    ORDER BY fecha_publicacion DESC LIMIT 3'''
-            ).fetchall()
+            )
+            avisos = dict_fetchall(cur)
         except:
             avisos = []
         
         # Obtener proyectos activos
         try:
-            proyectos = conn.execute(
-                'SELECT * FROM proyectos WHERE activo = 1 ORDER BY fecha_inicio DESC LIMIT 3'
-            ).fetchall()
+            cur.execute(
+                'SELECT * FROM proyectos WHERE activo = TRUE ORDER BY fecha_inicio DESC LIMIT 3'
+            )
+            proyectos = dict_fetchall(cur)
         except:
             proyectos = []
         
         # Obtener estadísticas
         stats = {}
         try:
-            stats['total_reportes'] = conn.execute('SELECT COUNT(*) FROM reportes').fetchone()[0]
-            stats['reportes_resueltos'] = conn.execute("SELECT COUNT(*) FROM reportes WHERE estado = 'resuelto'").fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM reportes')
+            stats['total_reportes'] = cur.fetchone()[0]
+            
+            cur.execute("SELECT COUNT(*) FROM reportes WHERE estado = 'resuelto'")
+            stats['reportes_resueltos'] = cur.fetchone()[0]
         except:
             stats['total_reportes'] = 0
             stats['reportes_resueltos'] = 0
             
         try:
-            stats['proyectos_activos'] = conn.execute("SELECT COUNT(*) FROM proyectos WHERE estado = 'en_progreso'").fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM proyectos WHERE estado = 'en_progreso'")
+            stats['proyectos_activos'] = cur.fetchone()[0]
         except:
             stats['proyectos_activos'] = 0
         
@@ -421,7 +380,6 @@ def login():
     
     if request.method == "POST":
         # Si es una solicitud POST, determinar si es login o registro
-        # Por el campo 'nombre' podemos saber si es registro
         if 'nombre' in request.form:
             # ========== ES UN REGISTRO ==========
             nombre = request.form.get("nombre", "").strip()
@@ -445,12 +403,14 @@ def login():
             
             try:
                 conn = get_db()
+                cur = conn.cursor()
                 
                 # Verificar si el email ya existe
-                existe = conn.execute(
-                    'SELECT id FROM usuarios WHERE email = ?',
+                cur.execute(
+                    'SELECT id FROM usuarios WHERE email = %s',
                     (email,)
-                ).fetchone()
+                )
+                existe = cur.fetchone()
                 
                 if existe:
                     flash('Este correo electrónico ya está registrado', 'error')
@@ -460,9 +420,9 @@ def login():
                 # Crear nuevo usuario
                 password_hash = generate_password_hash(password)
                 
-                conn.execute(
+                cur.execute(
                     '''INSERT INTO usuarios (nombre, email, password_hash, telefono, cedula, rol_id, creado_en)
-                        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
+                        VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)''',
                     (nombre, email, password_hash, telefono, cedula, 2)
                 )
                 
@@ -489,24 +449,24 @@ def login():
             
             try:
                 conn = get_db()
-                query = 'SELECT id, nombre, email, password_hash, rol_id FROM usuarios WHERE email = ?'
-                usuario = conn.execute(query, (email,)).fetchone()
+                cur = conn.cursor()
+                cur.execute('SELECT id, nombre, email, password_hash, rol_id FROM usuarios WHERE email = %s', (email,))
+                usuario_data = cur.fetchone()
                 conn.close()
                 
-                if usuario:
-                    # Acceder correctamente a la columna password_hash
-                    password_hash = usuario['password_hash']
+                if usuario_data:
+                    password_hash = usuario_data[3]
                     
                     if check_password_hash(password_hash, password):
-                        session['user_id'] = usuario['id']
-                        session['user_name'] = usuario['nombre']
-                        session['user_email'] = usuario['email']
-                        session['user_role'] = usuario['rol_id']
+                        session['user_id'] = usuario_data[0]
+                        session['user_name'] = usuario_data[1]
+                        session['user_email'] = usuario_data[2]
+                        session['user_role'] = usuario_data[4]
                         
                         if remember:
                             session.permanent = True
                         
-                        flash(f'¡Bienvenido/a {usuario["nombre"]}!', 'success')
+                        flash(f'¡Bienvenido/a {usuario_data[1]}!', 'success')
                         
                         next_url = session.pop('next_url', None)
                         if next_url:
@@ -551,19 +511,21 @@ def olvido_contrasena():
         
         try:
             conn = get_db()
-            usuario = conn.execute(
-                'SELECT id, nombre FROM usuarios WHERE email = ?',
+            cur = conn.cursor()
+            cur.execute(
+                'SELECT id, nombre FROM usuarios WHERE email = %s',
                 (email,)
-            ).fetchone()
+            )
+            usuario_data = cur.fetchone()
             
-            if usuario:
+            if usuario_data:
                 # Generar token único
                 token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
                 expiracion = datetime.now() + timedelta(hours=24)
                 
-                conn.execute(
-                    'INSERT INTO reset_tokens (user_id, token, expiracion) VALUES (?, ?, ?)',
-                    (usuario['id'], token, expiracion)
+                cur.execute(
+                    'INSERT INTO reset_tokens (user_id, token, expiracion) VALUES (%s, %s, %s)',
+                    (usuario_data[0], token, expiracion)
                 )
                 
                 conn.commit()
@@ -597,13 +559,15 @@ def restablecer_contrasena(token=None):
     
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         # Verificar token válido
-        token_data = conn.execute(
+        cur.execute(
             '''SELECT * FROM reset_tokens 
-               WHERE token = ? AND usado = 0 AND expiracion > datetime('now')''',
+               WHERE token = %s AND usado = FALSE AND expiracion > CURRENT_TIMESTAMP''',
             (token,)
-        ).fetchone()
+        )
+        token_data = dict_fetchone(cur)
         
         if not token_data:
             flash('Token inválido o expirado', 'error')
@@ -628,14 +592,14 @@ def restablecer_contrasena(token=None):
             
             # Actualizar contraseña
             password_hash = generate_password_hash(password)
-            conn.execute(
-                'UPDATE usuarios SET password_hash = ? WHERE id = ?',
+            cur.execute(
+                'UPDATE usuarios SET password_hash = %s WHERE id = %s',
                 (password_hash, token_data['user_id'])
             )
             
             # Marcar token como usado
-            conn.execute(
-                'UPDATE reset_tokens SET usado = 1 WHERE id = ?',
+            cur.execute(
+                'UPDATE reset_tokens SET usado = TRUE WHERE id = %s',
                 (token_data['id'],)
             )
             
@@ -670,14 +634,16 @@ def perfil():
     """Perfil del usuario"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         # Obtener datos del usuario - USAR creado_en
-        usuario_db = conn.execute(
+        cur.execute(
             '''SELECT id, nombre, email, telefono, direccion, cedula, 
                       creado_en, rol_id 
-               FROM usuarios WHERE id = ?''',
+               FROM usuarios WHERE id = %s''',
             (session['user_id'],)
-        ).fetchone()
+        )
+        usuario_db = dict_fetchone(cur)
         
         if not usuario_db:
             flash('Usuario no encontrado', 'error')
@@ -690,50 +656,50 @@ def perfil():
         reportes_resueltos = 0
         
         try:
-            total_reportes = conn.execute(
-                'SELECT COUNT(*) FROM reportes WHERE usuario_id = ?',
+            cur.execute(
+                'SELECT COUNT(*) FROM reportes WHERE usuario_id = %s',
                 (session['user_id'],)
-            ).fetchone()[0]
+            )
+            total_reportes = cur.fetchone()[0]
         except:
             pass
         
         try:
-            total_denuncias = conn.execute(
-                'SELECT COUNT(*) FROM denuncias WHERE usuario_id = ?',
+            cur.execute(
+                'SELECT COUNT(*) FROM denuncias WHERE usuario_id = %s',
                 (session['user_id'],)
-            ).fetchone()[0]
+            )
+            total_denuncias = cur.fetchone()[0]
         except:
             pass
         
         try:
-            reportes_resueltos = conn.execute(
-                "SELECT COUNT(*) FROM reportes WHERE usuario_id = ? AND estado = 'resuelto'",
+            cur.execute(
+                "SELECT COUNT(*) FROM reportes WHERE usuario_id = %s AND estado = 'resuelto'",
                 (session['user_id'],)
-            ).fetchone()[0]
+            )
+            reportes_resueltos = cur.fetchone()[0]
         except:
             pass
         
         # Obtener últimos reportes
         ultimos_reportes = []
         try:
-            ultimos_reportes = conn.execute(
+            cur.execute(
                 '''SELECT * FROM reportes 
-                   WHERE usuario_id = ? 
+                   WHERE usuario_id = %s 
                    ORDER BY fecha_reporte DESC LIMIT 5''',
                 (session['user_id'],)
-            ).fetchall()
+            )
+            ultimos_reportes = dict_fetchall(cur)
         except:
             pass
         
         conn.close()
         
-        usuario = dict(usuario_db)
-        # Usar creado_en en lugar de fecha_registro
+        usuario = usuario_db
         if 'creado_en' in usuario and usuario['creado_en']:
-            try:
-                usuario['fecha_registro'] = datetime.strptime(usuario['creado_en'], '%Y-%m-%d %H:%M:%S')
-            except:
-                usuario['fecha_registro'] = usuario['creado_en']
+            usuario['fecha_registro'] = usuario['creado_en']
         else:
             usuario['fecha_registro'] = datetime.now()
         
@@ -763,19 +729,19 @@ def actualizar_perfil():
             return redirect('/perfil')
         
         conn = get_db()
+        cur = conn.cursor()
         
-        conn.execute(
-            '''UPDATE usuarios SET nombre = ?, telefono = ?, 
-               direccion = ?, cedula = ? WHERE id = ?''',
+        cur.execute(
+            '''UPDATE usuarios SET nombre = %s, telefono = %s, 
+               direccion = %s, cedula = %s WHERE id = %s''',
             (nombre, telefono, direccion, cedula, session['user_id'])
         )
         
         conn.commit()
+        conn.close()
         
         # Actualizar sesión
         session['user_name'] = nombre
-        
-        conn.close()
         
         flash('Perfil actualizado correctamente', 'success')
         
@@ -807,26 +773,28 @@ def cambiar_contrasena():
             return redirect('/perfil')
         
         conn = get_db()
-        usuario = conn.execute(
-            'SELECT password_hash FROM usuarios WHERE id = ?',
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT password_hash FROM usuarios WHERE id = %s',
             (session['user_id'],)
-        ).fetchone()
+        )
+        usuario_data = cur.fetchone()
         
-        if not usuario:
+        if not usuario_data:
             flash('Usuario no encontrado', 'error')
             conn.close()
             return redirect('/perfil')
         
         # Verificar contraseña actual
-        if not check_password_hash(usuario['password_hash'], current_password):
+        if not check_password_hash(usuario_data[0], current_password):
             flash('Contraseña actual incorrecta', 'error')
             conn.close()
             return redirect('/perfil')
         
         # Actualizar contraseña
         new_hash = generate_password_hash(new_password)
-        conn.execute(
-            'UPDATE usuarios SET password_hash = ? WHERE id = ?',
+        cur.execute(
+            'UPDATE usuarios SET password_hash = %s WHERE id = %s',
             (new_hash, session['user_id'])
         )
         conn.commit()
@@ -874,12 +842,13 @@ def reportar():
                     imagen = filename
             
             conn = get_db()
+            cur = conn.cursor()
             
-            conn.execute(
+            cur.execute(
                 '''INSERT INTO reportes 
                    (usuario_id, titulo, descripcion, categoria, ubicacion, 
                     latitud, longitud, prioridad, imagen)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)''',
                 (session['user_id'], titulo, descripcion, categoria, ubicacion,
                  latitud if latitud else None, longitud if longitud else None,
                  prioridad, imagen)
@@ -903,18 +872,7 @@ def mis_reportes():
     """Página para ver mis reportes"""
     try:
         conn = get_db()
-        
-        # Verificar si la tabla reportes existe
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reportes'")
-        if not cursor.fetchone():
-            conn.close()
-            return render_template("mis_reportes.html", 
-                                 reportes=[],
-                                 categorias=[],
-                                 total=0,
-                                 pendientes=0,
-                                 en_proceso=0,
-                                 resueltos=0)
+        cur = conn.cursor()
         
         # Obtener filtros
         estado_filter = request.args.get('estado', '')
@@ -923,35 +881,37 @@ def mis_reportes():
         fecha_fin = request.args.get('fecha_fin', '')
         
         # Construir consulta
-        query = '''SELECT * FROM reportes WHERE usuario_id = ?'''
+        query = '''SELECT * FROM reportes WHERE usuario_id = %s'''
         params = [session['user_id']]
         
         if estado_filter:
-            query += ' AND estado = ?'
+            query += ' AND estado = %s'
             params.append(estado_filter)
         
         if categoria_filter:
-            query += ' AND categoria = ?'
+            query += ' AND categoria = %s'
             params.append(categoria_filter)
         
         if fecha_inicio:
-            query += ' AND DATE(fecha_reporte) >= ?'
+            query += ' AND DATE(fecha_reporte) >= %s'
             params.append(fecha_inicio)
         
         if fecha_fin:
-            query += ' AND DATE(fecha_reporte) <= ?'
+            query += ' AND DATE(fecha_reporte) <= %s'
             params.append(fecha_fin)
         
         query += ' ORDER BY fecha_reporte DESC'
         
-        reportes = conn.execute(query, params).fetchall()
+        cur.execute(query, params)
+        reportes = dict_fetchall(cur)
         
         # Obtener categorías únicas para el filtro
         try:
-            categorias = conn.execute(
-                'SELECT DISTINCT categoria FROM reportes WHERE usuario_id = ? ORDER BY categoria',
+            cur.execute(
+                'SELECT DISTINCT categoria FROM reportes WHERE usuario_id = %s ORDER BY categoria',
                 (session['user_id'],)
-            ).fetchall()
+            )
+            categorias = dict_fetchall(cur)
         except:
             categorias = []
         
@@ -985,12 +945,14 @@ def ver_reporte(id):
     """Ver detalles de un reporte específico"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         # Obtener reporte
-        reporte = conn.execute(
-            'SELECT r.*, u.nombre as usuario_nombre FROM reportes r JOIN usuarios u ON r.usuario_id = u.id WHERE r.id = ?',
+        cur.execute(
+            'SELECT r.*, u.nombre as usuario_nombre FROM reportes r JOIN usuarios u ON r.usuario_id = u.id WHERE r.id = %s',
             (id,)
-        ).fetchone()
+        )
+        reporte = dict_fetchone(cur)
         
         if not reporte:
             flash('Reporte no encontrado', 'error')
@@ -1006,14 +968,15 @@ def ver_reporte(id):
         # Obtener comentarios
         comentarios = []
         try:
-            comentarios = conn.execute(
+            cur.execute(
                 '''SELECT c.*, u.nombre as usuario_nombre 
                    FROM comentarios c 
                    JOIN usuarios u ON c.usuario_id = u.id 
-                   WHERE c.reporte_id = ? 
+                   WHERE c.reporte_id = %s 
                    ORDER BY c.fecha ASC''',
                 (id,)
-            ).fetchall()
+            )
+            comentarios = dict_fetchall(cur)
         except:
             pass
         
@@ -1040,33 +1003,35 @@ def comentar_reporte(id):
             return redirect(f'/reporte/{id}')
         
         conn = get_db()
+        cur = conn.cursor()
         
         # Verificar que el reporte existe y el usuario tiene acceso
-        reporte = conn.execute(
-            'SELECT usuario_id FROM reportes WHERE id = ?',
+        cur.execute(
+            'SELECT usuario_id FROM reportes WHERE id = %s',
             (id,)
-        ).fetchone()
+        )
+        reporte_data = cur.fetchone()
         
-        if not reporte:
+        if not reporte_data:
             flash('Reporte no encontrado', 'error')
             conn.close()
             return redirect('/mis_reportes')
         
-        if reporte['usuario_id'] != session['user_id'] and get_user_role() != 1:
+        if reporte_data[0] != session['user_id'] and get_user_role() != 1:
             flash('No tiene permisos para comentar en este reporte', 'error')
             conn.close()
             return redirect('/mis_reportes')
         
         # Insertar comentario
-        conn.execute(
+        cur.execute(
             '''INSERT INTO comentarios (reporte_id, usuario_id, contenido, tipo)
-               VALUES (?, ?, ?, ?)''',
+               VALUES (%s, %s, %s, %s)''',
             (id, session['user_id'], contenido, tipo)
         )
         
         # Actualizar fecha de actualización del reporte
-        conn.execute(
-            'UPDATE reportes SET fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?',
+        cur.execute(
+            'UPDATE reportes SET fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = %s',
             (id,)
         )
         
@@ -1098,19 +1063,20 @@ def denunciar():
             denunciado_cargo = request.form.get("denunciado_cargo", "").strip()
             denunciado_institucion = request.form.get("denunciado_institucion", "").strip()
             pruebas = request.form.get("pruebas", "").strip()
-            anonimo = 1 if request.form.get("anonimo") else 0
+            anonimo = True if request.form.get("anonimo") else False
             
             if not titulo or not descripcion or not tipo:
                 flash('Todos los campos obligatorios deben ser completados', 'error')
                 return render_template("denunciar.html")
             
             conn = get_db()
+            cur = conn.cursor()
             
-            conn.execute(
+            cur.execute(
                 '''INSERT INTO denuncias 
                    (usuario_id, titulo, descripcion, tipo, denunciado_nombre,
                     denunciado_cargo, denunciado_institucion, pruebas, anonimo)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)''',
                 (session['user_id'], titulo, descripcion, tipo, 
                  denunciado_nombre if denunciado_nombre else None,
                  denunciado_cargo if denunciado_cargo else None,
@@ -1136,43 +1102,36 @@ def mis_denuncias():
     """Página para ver mis denuncias"""
     try:
         conn = get_db()
-        
-        # Verificar si la tabla denuncias existe
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='denuncias'")
-        if not cursor.fetchone():
-            conn.close()
-            return render_template("mis_denuncias.html", 
-                                 denuncias=[],
-                                 tipos=[],
-                                 estado_filter='',
-                                 tipo_filter='')
+        cur = conn.cursor()
         
         # Obtener filtros
         estado_filter = request.args.get('estado', '')
         tipo_filter = request.args.get('tipo', '')
         
         # Construir consulta
-        query = '''SELECT * FROM denuncias WHERE usuario_id = ?'''
+        query = '''SELECT * FROM denuncias WHERE usuario_id = %s'''
         params = [session['user_id']]
         
         if estado_filter:
-            query += ' AND estado = ?'
+            query += ' AND estado = %s'
             params.append(estado_filter)
         
         if tipo_filter:
-            query += ' AND tipo = ?'
+            query += ' AND tipo = %s'
             params.append(tipo_filter)
         
         query += ' ORDER BY fecha_denuncia DESC'
         
-        denuncias = conn.execute(query, params).fetchall()
+        cur.execute(query, params)
+        denuncias = dict_fetchall(cur)
         
         # Obtener tipos únicos para el filtro
         try:
-            tipos = conn.execute(
-                'SELECT DISTINCT tipo FROM denuncias WHERE usuario_id = ? ORDER BY tipo',
+            cur.execute(
+                'SELECT DISTINCT tipo FROM denuncias WHERE usuario_id = %s ORDER BY tipo',
                 (session['user_id'],)
-            ).fetchall()
+            )
+            tipos = dict_fetchall(cur)
         except:
             tipos = []
         
@@ -1194,15 +1153,17 @@ def ver_denuncia(id):
     """Ver detalles de una denuncia específica"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         # Obtener denuncia
-        denuncia = conn.execute(
-            'SELECT d.*, u.nombre as usuario_nombre FROM denuncias d JOIN usuarios u ON d.usuario_id = u.id WHERE d.id = ?',
+        cur.execute(
+            'SELECT d.*, u.nombre as usuario_nombre FROM denuncias d JOIN usuarios u ON d.usuario_id = u.id WHERE d.id = %s',
             (id,)
-        ).fetchone()
+        )
+        denuncia = dict_fetchone(cur)
         
         if not denuncia:
-            flash('Denuncia no encontrada', 'error')
+            flash('Denuncia no encontrado', 'error')
             conn.close()
             return redirect('/mis_denuncias')
         
@@ -1229,14 +1190,16 @@ def servicios():
     """Página de servicios"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         try:
-            servicios = conn.execute(
-                'SELECT * FROM servicios WHERE activo = 1 ORDER BY orden'
-            ).fetchall()
+            cur.execute(
+                'SELECT * FROM servicios WHERE activo = TRUE ORDER BY orden'
+            )
+            servicios_data = dict_fetchall(cur)
         except:
-            servicios = []
+            servicios_data = []
         conn.close()
-        return render_template("servicios.html", servicios=servicios)
+        return render_template("servicios.html", servicios=servicios_data)
     except Exception as e:
         print(f"⚠️ Error en servicios: {e}")
         return render_template("servicios.html", servicios=[])
@@ -1246,10 +1209,12 @@ def servicio_detalle(id):
     """Detalle de un servicio específico"""
     try:
         conn = get_db()
-        servicio = conn.execute(
-            'SELECT * FROM servicios WHERE id = ? AND activo = 1',
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT * FROM servicios WHERE id = %s AND activo = TRUE',
             (id,)
-        ).fetchone()
+        )
+        servicio = dict_fetchone(cur)
         conn.close()
         
         if servicio:
@@ -1271,41 +1236,33 @@ def proyectos():
     """Página de proyectos"""
     try:
         conn = get_db()
-        
-        # Verificar si la tabla proyectos existe
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='proyectos'")
-        if not cursor.fetchone():
-            conn.close()
-            return render_template("proyectos.html", 
-                                 proyectos=[],
-                                 total=0,
-                                 en_progreso=0,
-                                 completados=0)
+        cur = conn.cursor()
         
         # Obtener filtros
         estado_filter = request.args.get('estado', '')
         
         # Construir consulta
-        query = 'SELECT * FROM proyectos WHERE activo = 1'
+        query = 'SELECT * FROM proyectos WHERE activo = TRUE'
         params = []
         
         if estado_filter:
-            query += ' AND estado = ?'
+            query += ' AND estado = %s'
             params.append(estado_filter)
         
         query += ' ORDER BY fecha_inicio DESC'
         
-        proyectos = conn.execute(query, params).fetchall()
+        cur.execute(query, params)
+        proyectos_data = dict_fetchall(cur)
         
         # Obtener estadísticas
-        total = len(proyectos)
-        en_progreso = len([p for p in proyectos if p['estado'] == 'en_progreso'])
-        completados = len([p for p in proyectos if p['estado'] == 'completado'])
+        total = len(proyectos_data)
+        en_progreso = len([p for p in proyectos_data if p['estado'] == 'en_progreso'])
+        completados = len([p for p in proyectos_data if p['estado'] == 'completado'])
         
         conn.close()
         
         return render_template("proyectos.html", 
-                             proyectos=proyectos,
+                             proyectos=proyectos_data,
                              total=total,
                              en_progreso=en_progreso,
                              completados=completados,
@@ -1319,10 +1276,12 @@ def proyecto_detalle(id):
     """Detalle de un proyecto específico"""
     try:
         conn = get_db()
-        proyecto = conn.execute(
-            'SELECT * FROM proyectos WHERE id = ? AND activo = 1',
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT * FROM proyectos WHERE id = %s AND activo = TRUE',
             (id,)
-        ).fetchone()
+        )
+        proyecto = dict_fetchone(cur)
         conn.close()
         
         if proyecto:
@@ -1344,38 +1303,32 @@ def avisos():
     """Página de avisos"""
     try:
         conn = get_db()
-        
-        # Verificar si la tabla avisos existe
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='avisos'")
-        if not cursor.fetchone():
-            conn.close()
-            return render_template("avisos.html", 
-                                 avisos=[],
-                                 tipos=[],
-                                 tipo_filter='')
+        cur = conn.cursor()
         
         # Obtener filtros
         tipo_filter = request.args.get('tipo', '')
         
         # Construir consulta
         query = '''SELECT * FROM avisos 
-                   WHERE activo = 1 
-                   AND (fecha_expiracion IS NULL OR fecha_expiracion >= DATE('now'))'''
+                   WHERE activo = TRUE 
+                   AND (fecha_expiracion IS NULL OR fecha_expiracion >= CURRENT_DATE)'''
         params = []
         
         if tipo_filter:
-            query += ' AND tipo = ?'
+            query += ' AND tipo = %s'
             params.append(tipo_filter)
         
         query += ' ORDER BY importante DESC, fecha_publicacion DESC'
         
-        avisos_list = conn.execute(query, params).fetchall()
+        cur.execute(query, params)
+        avisos_list = dict_fetchall(cur)
         
         # Obtener tipos únicos para el filtro
         try:
-            tipos = conn.execute(
-                'SELECT DISTINCT tipo FROM avisos WHERE activo = 1 ORDER BY tipo'
-            ).fetchall()
+            cur.execute(
+                'SELECT DISTINCT tipo FROM avisos WHERE activo = TRUE ORDER BY tipo'
+            )
+            tipos = dict_fetchall(cur)
         except:
             tipos = []
         
@@ -1394,12 +1347,14 @@ def aviso_detalle(id):
     """Detalle de un aviso específico"""
     try:
         conn = get_db()
-        aviso = conn.execute(
+        cur = conn.cursor()
+        cur.execute(
             '''SELECT * FROM avisos 
-               WHERE id = ? AND activo = 1 
-               AND (fecha_expiracion IS NULL OR fecha_expiracion >= DATE('now'))''',
+               WHERE id = %s AND activo = TRUE 
+               AND (fecha_expiracion IS NULL OR fecha_expiracion >= CURRENT_DATE)''',
             (id,)
-        ).fetchone()
+        )
+        aviso = dict_fetchone(cur)
         conn.close()
         
         if aviso:
@@ -1432,10 +1387,11 @@ def contacto():
         
         try:
             conn = get_db()
+            cur = conn.cursor()
             
-            conn.execute(
+            cur.execute(
                 '''INSERT INTO contactos (nombre, email, telefono, asunto, mensaje)
-                   VALUES (?, ?, ?, ?, ?)''',
+                   VALUES (%s, %s, %s, %s, %s)''',
                 (nombre, email, telefono, asunto, mensaje)
             )
             
@@ -1471,58 +1427,67 @@ def admin_dashboard():
     """Panel de administración"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         # Estadísticas generales
         stats = {}
         
         try:
-            stats['total_usuarios'] = conn.execute('SELECT COUNT(*) FROM usuarios').fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM usuarios')
+            stats['total_usuarios'] = cur.fetchone()[0]
         except:
             stats['total_usuarios'] = 0
             
         try:
-            stats['total_reportes'] = conn.execute('SELECT COUNT(*) FROM reportes').fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM reportes')
+            stats['total_reportes'] = cur.fetchone()[0]
         except:
             stats['total_reportes'] = 0
             
         try:
-            stats['reportes_pendientes'] = conn.execute("SELECT COUNT(*) FROM reportes WHERE estado = 'pendiente'").fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM reportes WHERE estado = 'pendiente'")
+            stats['reportes_pendientes'] = cur.fetchone()[0]
         except:
             stats['reportes_pendientes'] = 0
             
         try:
-            stats['total_denuncias'] = conn.execute('SELECT COUNT(*) FROM denuncias').fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM denuncias')
+            stats['total_denuncias'] = cur.fetchone()[0]
         except:
             stats['total_denuncias'] = 0
             
         try:
-            stats['denuncias_revision'] = conn.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'en_revision'").fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM denuncias WHERE estado = 'en_revision'")
+            stats['denuncias_revision'] = cur.fetchone()[0]
         except:
             stats['denuncias_revision'] = 0
             
         try:
-            stats['total_contactos'] = conn.execute('SELECT COUNT(*) FROM contactos WHERE estado = "nuevo"').fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM contactos WHERE estado = %s', ('nuevo',))
+            stats['total_contactos'] = cur.fetchone()[0]
         except:
             stats['total_contactos'] = 0
         
         # Reportes recientes
         reportes_recientes = []
         try:
-            reportes_recientes = conn.execute(
+            cur.execute(
                 '''SELECT r.*, u.nombre as usuario_nombre 
                    FROM reportes r 
                    JOIN usuarios u ON r.usuario_id = u.id 
                    ORDER BY r.fecha_reporte DESC LIMIT 10'''
-            ).fetchall()
+            )
+            reportes_recientes = dict_fetchall(cur)
         except:
             pass
         
         # Usuarios recientes
         usuarios_recientes = []
         try:
-            usuarios_recientes = conn.execute(
+            cur.execute(
                 'SELECT * FROM usuarios ORDER BY creado_en DESC LIMIT 10'
-            ).fetchall()
+            )
+            usuarios_recientes = dict_fetchall(cur)
         except:
             pass
         
@@ -1543,6 +1508,7 @@ def admin_usuarios():
     """Gestión de usuarios"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         # Obtener filtros
         rol_filter = request.args.get('rol', '')
@@ -1553,16 +1519,17 @@ def admin_usuarios():
         params = []
         
         if rol_filter:
-            query += ' AND rol_id = ?'
+            query += ' AND rol_id = %s'
             params.append(rol_filter)
         
         if search:
-            query += ' AND (nombre LIKE ? OR email LIKE ?)'
+            query += ' AND (nombre ILIKE %s OR email ILIKE %s)'
             params.extend([f'%{search}%', f'%{search}%'])
         
         query += ' ORDER BY creado_en DESC'
         
-        usuarios = conn.execute(query, params).fetchall()
+        cur.execute(query, params)
+        usuarios = dict_fetchall(cur)
         
         conn.close()
         
@@ -1581,29 +1548,32 @@ def admin_editar_usuario(id):
     """Editar usuario"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         if request.method == "POST":
             nombre = request.form.get("nombre", "").strip()
             email = request.form.get("email", "").strip().lower()
             telefono = request.form.get("telefono", "").strip()
             rol_id = request.form.get("rol_id", "2")
-            activo = 1 if request.form.get("activo") else 0
+            activo = True if request.form.get("activo") else False
             
             # Verificar si el email ya existe (excluyendo el usuario actual)
-            existe = conn.execute(
-                'SELECT id FROM usuarios WHERE email = ? AND id != ?',
+            cur.execute(
+                'SELECT id FROM usuarios WHERE email = %s AND id != %s',
                 (email, id)
-            ).fetchone()
+            )
+            existe = cur.fetchone()
             
             if existe:
                 flash('Este correo electrónico ya está registrado', 'error')
-                usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (id,)).fetchone()
+                cur.execute('SELECT * FROM usuarios WHERE id = %s', (id,))
+                usuario = dict_fetchone(cur)
                 conn.close()
                 return render_template("admin_editar_usuario.html", usuario=usuario)
             
-            conn.execute(
-                '''UPDATE usuarios SET nombre = ?, email = ?, telefono = ?, 
-                   rol_id = ?, activo = ? WHERE id = ?''',
+            cur.execute(
+                '''UPDATE usuarios SET nombre = %s, email = %s, telefono = %s, 
+                   rol_id = %s, activo = %s WHERE id = %s''',
                 (nombre, email, telefono, rol_id, activo, id)
             )
             
@@ -1613,7 +1583,8 @@ def admin_editar_usuario(id):
             flash('Usuario actualizado correctamente', 'success')
             return redirect('/admin/usuarios')
         
-        usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (id,)).fetchone()
+        cur.execute('SELECT * FROM usuarios WHERE id = %s', (id,))
+        usuario = dict_fetchone(cur)
         conn.close()
         
         if not usuario:
@@ -1633,17 +1604,7 @@ def admin_reportes():
     """Gestión de reportes"""
     try:
         conn = get_db()
-        
-        # Verificar si la tabla reportes existe
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reportes'")
-        if not cursor.fetchone():
-            conn.close()
-            return render_template("admin_reportes.html", 
-                                 reportes=[],
-                                 categorias=[],
-                                 estado_filter='',
-                                 categoria_filter='',
-                                 prioridad_filter='')
+        cur = conn.cursor()
         
         # Obtener filtros
         estado_filter = request.args.get('estado', '')
@@ -1658,27 +1619,29 @@ def admin_reportes():
         params = []
         
         if estado_filter:
-            query += ' AND r.estado = ?'
+            query += ' AND r.estado = %s'
             params.append(estado_filter)
         
         if categoria_filter:
-            query += ' AND r.categoria = ?'
+            query += ' AND r.categoria = %s'
             params.append(categoria_filter)
         
         if prioridad_filter:
-            query += ' AND r.prioridad = ?'
+            query += ' AND r.prioridad = %s'
             params.append(prioridad_filter)
         
         query += ' ORDER BY r.fecha_reporte DESC'
         
-        reportes = conn.execute(query, params).fetchall()
+        cur.execute(query, params)
+        reportes = dict_fetchall(cur)
         
         # Obtener categorías únicas para el filtro
         categorias = []
         try:
-            categorias = conn.execute(
+            cur.execute(
                 'SELECT DISTINCT categoria FROM reportes ORDER BY categoria'
-            ).fetchall()
+            )
+            categorias = dict_fetchall(cur)
         except:
             pass
         
@@ -1701,23 +1664,24 @@ def admin_editar_reporte(id):
     """Editar reporte"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         if request.method == "POST":
             estado = request.form.get("estado", "").strip()
             respuesta_admin = request.form.get("respuesta_admin", "").strip()
             
-            conn.execute(
-                '''UPDATE reportes SET estado = ?, fecha_actualizacion = CURRENT_TIMESTAMP
-                   WHERE id = ?''',
+            cur.execute(
+                '''UPDATE reportes SET estado = %s, fecha_actualizacion = CURRENT_TIMESTAMP
+                   WHERE id = %s''',
                 (estado, id)
             )
             
             # Si hay respuesta, agregar como comentario del admin
             if respuesta_admin:
                 try:
-                    conn.execute(
+                    cur.execute(
                         '''INSERT INTO comentarios (reporte_id, usuario_id, contenido, tipo)
-                           VALUES (?, ?, ?, ?)''',
+                           VALUES (%s, %s, %s, %s)''',
                         (id, session['user_id'], respuesta_admin, 'respuesta_admin')
                     )
                 except:
@@ -1729,13 +1693,14 @@ def admin_editar_reporte(id):
             flash('Reporte actualizado correctamente', 'success')
             return redirect('/admin/reportes')
         
-        reporte = conn.execute(
+        cur.execute(
             '''SELECT r.*, u.nombre as usuario_nombre 
                FROM reportes r 
                JOIN usuarios u ON r.usuario_id = u.id 
-               WHERE r.id = ?''',
+               WHERE r.id = %s''',
             (id,)
-        ).fetchone()
+        )
+        reporte = dict_fetchone(cur)
         
         conn.close()
         
@@ -1756,15 +1721,7 @@ def admin_denuncias():
     """Gestión de denuncias"""
     try:
         conn = get_db()
-        
-        # Verificar si la tabla denuncias existe
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='denuncias'")
-        if not cursor.fetchone():
-            conn.close()
-            return render_template("admin_denuncias.html", 
-                                 denuncias=[],
-                                 estado_filter='',
-                                 tipo_filter='')
+        cur = conn.cursor()
         
         # Obtener filtros
         estado_filter = request.args.get('estado', '')
@@ -1778,16 +1735,17 @@ def admin_denuncias():
         params = []
         
         if estado_filter:
-            query += ' AND d.estado = ?'
+            query += ' AND d.estado = %s'
             params.append(estado_filter)
         
         if tipo_filter:
-            query += ' AND d.tipo = ?'
+            query += ' AND d.tipo = %s'
             params.append(tipo_filter)
         
         query += ' ORDER BY d.fecha_denuncia DESC'
         
-        denuncias = conn.execute(query, params).fetchall()
+        cur.execute(query, params)
+        denuncias = dict_fetchall(cur)
         
         conn.close()
         
@@ -1806,14 +1764,15 @@ def admin_editar_denuncia(id):
     """Editar denuncia"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         if request.method == "POST":
             estado = request.form.get("estado", "").strip()
             observaciones = request.form.get("observaciones", "").strip()
             
-            conn.execute(
-                '''UPDATE denuncias SET estado = ?, fecha_actualizacion = CURRENT_TIMESTAMP
-                   WHERE id = ?''',
+            cur.execute(
+                '''UPDATE denuncias SET estado = %s, fecha_actualizacion = CURRENT_TIMESTAMP
+                   WHERE id = %s''',
                 (estado, id)
             )
             
@@ -1823,13 +1782,14 @@ def admin_editar_denuncia(id):
             flash('Denuncia actualizada correctamente', 'success')
             return redirect('/admin/denuncias')
         
-        denuncia = conn.execute(
+        cur.execute(
             '''SELECT d.*, u.nombre as usuario_nombre 
                FROM denuncias d 
                JOIN usuarios u ON d.usuario_id = u.id 
-               WHERE d.id = ?''',
+               WHERE d.id = %s''',
             (id,)
-        ).fetchone()
+        )
+        denuncia = dict_fetchone(cur)
         
         conn.close()
         
@@ -1850,14 +1810,7 @@ def admin_contactos():
     """Gestión de contactos"""
     try:
         conn = get_db()
-        
-        # Verificar si la tabla contactos existe
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='contactos'")
-        if not cursor.fetchone():
-            conn.close()
-            return render_template("admin_contactos.html", 
-                                 contactos=[],
-                                 estado_filter='')
+        cur = conn.cursor()
         
         # Obtener filtros
         estado_filter = request.args.get('estado', '')
@@ -1867,12 +1820,13 @@ def admin_contactos():
         params = []
         
         if estado_filter:
-            query += ' AND estado = ?'
+            query += ' AND estado = %s'
             params.append(estado_filter)
         
         query += ' ORDER BY fecha DESC'
         
-        contactos = conn.execute(query, params).fetchall()
+        cur.execute(query, params)
+        contactos = dict_fetchall(cur)
         
         conn.close()
         
@@ -1896,10 +1850,11 @@ def admin_responder_contacto(id):
             return redirect('/admin/contactos')
         
         conn = get_db()
+        cur = conn.cursor()
         
-        conn.execute(
-            '''UPDATE contactos SET respuesta = ?, estado = 'respondido' 
-               WHERE id = ?''',
+        cur.execute(
+            '''UPDATE contactos SET respuesta = %s, estado = 'respondido' 
+               WHERE id = %s''',
             (respuesta, id)
         )
         
@@ -1924,27 +1879,31 @@ def exportar_datos(tipo):
     """Exportar datos a CSV"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         if tipo == 'usuarios':
-            data = conn.execute('SELECT * FROM usuarios').fetchall()
+            cur.execute('SELECT * FROM usuarios')
+            data = dict_fetchall(cur)
             filename = 'usuarios.csv'
             fields = ['id', 'nombre', 'email', 'telefono', 'cedula', 'rol_id', 'creado_en']
         
         elif tipo == 'reportes':
-            data = conn.execute('''
+            cur.execute('''
                 SELECT r.*, u.nombre as usuario_nombre 
                 FROM reportes r 
                 JOIN usuarios u ON r.usuario_id = u.id
-            ''').fetchall()
+            ''')
+            data = dict_fetchall(cur)
             filename = 'reportes.csv'
             fields = ['id', 'usuario_nombre', 'titulo', 'descripcion', 'categoria', 'ubicacion', 'estado', 'fecha_reporte']
         
         elif tipo == 'denuncias':
-            data = conn.execute('''
+            cur.execute('''
                 SELECT d.*, u.nombre as usuario_nombre 
                 FROM denuncias d 
                 JOIN usuarios u ON d.usuario_id = u.id
-            ''').fetchall()
+            ''')
+            data = dict_fetchall(cur)
             filename = 'denuncias.csv'
             fields = ['id', 'usuario_nombre', 'titulo', 'tipo', 'estado', 'fecha_denuncia']
         
@@ -1961,7 +1920,7 @@ def exportar_datos(tipo):
         
         # Escribir datos
         for row in data:
-            writer.writerow([row[field] for field in fields])
+            writer.writerow([row.get(field, '') for field in fields])
         
         output.seek(0)
         
@@ -1993,10 +1952,12 @@ def check_email():
     
     try:
         conn = get_db()
-        usuario = conn.execute(
-            'SELECT id FROM usuarios WHERE email = ?',
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT id FROM usuarios WHERE email = %s',
             (email,)
-        ).fetchone()
+        )
+        usuario = cur.fetchone()
         conn.close()
         
         if usuario:
@@ -2012,36 +1973,43 @@ def api_estadisticas():
     """Obtener estadísticas del sistema"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         stats = {}
         
         try:
-            stats['total_usuarios'] = conn.execute('SELECT COUNT(*) FROM usuarios').fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM usuarios')
+            stats['total_usuarios'] = cur.fetchone()[0]
         except:
             stats['total_usuarios'] = 0
             
         try:
-            stats['total_reportes'] = conn.execute('SELECT COUNT(*) FROM reportes').fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM reportes')
+            stats['total_reportes'] = cur.fetchone()[0]
         except:
             stats['total_reportes'] = 0
             
         try:
-            stats['reportes_pendientes'] = conn.execute("SELECT COUNT(*) FROM reportes WHERE estado = 'pendiente'").fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM reportes WHERE estado = 'pendiente'")
+            stats['reportes_pendientes'] = cur.fetchone()[0]
         except:
             stats['reportes_pendientes'] = 0
             
         try:
-            stats['reportes_resueltos'] = conn.execute("SELECT COUNT(*) FROM reportes WHERE estado = 'resuelto'").fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM reportes WHERE estado = 'resuelto'")
+            stats['reportes_resueltos'] = cur.fetchone()[0]
         except:
             stats['reportes_resueltos'] = 0
             
         try:
-            stats['total_denuncias'] = conn.execute('SELECT COUNT(*) FROM denuncias').fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM denuncias')
+            stats['total_denuncias'] = cur.fetchone()[0]
         except:
             stats['total_denuncias'] = 0
             
         try:
-            stats['total_proyectos'] = conn.execute('SELECT COUNT(*) FROM proyectos').fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM proyectos')
+            stats['total_proyectos'] = cur.fetchone()[0]
         except:
             stats['total_proyectos'] = 0
         
@@ -2062,14 +2030,20 @@ def debug_db_structure():
     """Verificar estructura completa de la BD"""
     try:
         conn = get_db()
+        cur = conn.cursor()
         
         print("\n" + "="*60)
         print("🔍 DEBUG: ESTRUCTURA COMPLETA DE LA BASE DE DATOS")
         print("="*60)
         
         # Listar todas las tablas
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tablas = cursor.fetchall()
+        cur.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        """)
+        tablas = cur.fetchall()
         
         for tabla in tablas:
             tabla_nombre = tabla[0]
@@ -2077,11 +2051,16 @@ def debug_db_structure():
             print("-" * 40)
             
             # Mostrar columnas de cada tabla
-            cursor = conn.execute(f"PRAGMA table_info({tabla_nombre})")
-            columnas = cursor.fetchall()
+            cur.execute("""
+                SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns 
+                WHERE table_name = %s AND table_schema = 'public'
+                ORDER BY ordinal_position
+            """, (tabla_nombre,))
+            columnas = cur.fetchall()
             
             for col in columnas:
-                print(f"  {col[1]} ({col[2]}) - PK: {col[5]}")
+                print(f"  {col[0]} ({col[1]}) - Nullable: {col[2]}")
         
         conn.close()
         
@@ -2145,23 +2124,23 @@ def archivo_demasiado_grande(error):
     return redirect(request.referrer or '/')
 
 # ===============================
+# INICIALIZAR BASE DE DATOS AL ARRANCAR
+# ===============================
+with app.app_context():
+    verificar_y_preparar_db()
+
+# ===============================
 # INICIALIZACIÓN Y EJECUCIÓN
 # ===============================
 
 if __name__ == "__main__":
     print(f"\n{'='*60}")
-    print("🚀 SISTEMA AYUNTAMIENTO DE CUTUPÚ - VERSIÓN COMPLETA")
+    print("🚀 SISTEMA AYUNTAMIENTO DE CUTUPÚ - VERSIÓN COMPLETA (PostgreSQL)")
     print("="*60)
     
     # Crear carpeta de uploads si no existe
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     print(f"📁 Carpeta de uploads creada: {app.config['UPLOAD_FOLDER']}")
-    
-    # Verificar y preparar base de datos
-    if not verificar_y_preparar_db():
-        print("\n❌ ERROR: Problema con la base de datos")
-        print("="*60)
-        exit(1)
     
     print(f"\n🔑 INFORMACIÓN DE ACCESO:")
     print(f"   1. Para ADMIN:")
@@ -2170,7 +2149,7 @@ if __name__ == "__main__":
     print(f"   2. También puedes registrar una cuenta nueva")
     print("="*60)
     
-    print("\n✅ Sistema listo para ejecutar")
+    print("\n✅ Sistema PostgreSQL listo para ejecutar")
     print("🌐 URL: http://localhost:5000")
     print("="*60)
 
